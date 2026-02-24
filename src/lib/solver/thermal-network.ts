@@ -23,7 +23,7 @@ interface DbNode {
   capacitance: number | null;
   boundaryTemp: number | null;
   area: number | null;
-  mass: number | null;
+  mass?: number | null;
   absorptivity: number | null;
   emissivity: number | null;
 }

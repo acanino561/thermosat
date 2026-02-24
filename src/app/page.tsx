@@ -1,16 +1,36 @@
-export default function Home() {
+'use client';
+
+import { LenisProvider } from '@/components/shared/lenis-provider';
+import { CursorGlow } from '@/components/shared/cursor-glow';
+import { GrainOverlay } from '@/components/shared/grain-overlay';
+import { Navbar } from '@/components/landing/navbar';
+import { HeroSection } from '@/components/landing/hero-section';
+import { ProblemSection } from '@/components/landing/problem-section';
+import { FeaturesSection } from '@/components/landing/features-section';
+import { HowItWorksSection } from '@/components/landing/how-it-works-section';
+import { PricingSection } from '@/components/landing/pricing-section';
+import { ComparisonSection } from '@/components/landing/comparison-section';
+import { TestimonialsSection } from '@/components/landing/testimonials-section';
+import { CtaSection } from '@/components/landing/cta-section';
+import { Footer } from '@/components/landing/footer';
+
+export default function LandingPage() {
   return (
-    <main>
-      <h1>Spacecraft Thermal Analysis API</h1>
-      <p>Backend API server. Frontend coming soon.</p>
-      <h2>API Endpoints</h2>
-      <ul>
-        <li><code>GET /api/projects</code> — List projects</li>
-        <li><code>POST /api/projects</code> — Create project</li>
-        <li><code>GET /api/materials</code> — List materials</li>
-        <li><code>POST /api/orbital-env</code> — Calculate orbital environment</li>
-        <li><code>POST /api/projects/[id]/models/[mid]/simulate</code> — Run simulation</li>
-      </ul>
-    </main>
+    <LenisProvider>
+      <CursorGlow />
+      <GrainOverlay />
+      <Navbar />
+      <main>
+        <HeroSection />
+        <ProblemSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <PricingSection />
+        <ComparisonSection />
+        <TestimonialsSection />
+        <CtaSection />
+      </main>
+      <Footer />
+    </LenisProvider>
   );
 }
