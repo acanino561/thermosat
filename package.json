@@ -1,0 +1,38 @@
+{
+  "name": "spacecraft-thermal-analysis",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "npx tsx src/scripts/seed-materials.ts",
+    "test:solver": "npx tsx src/scripts/test-solver.ts"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "next-auth": "^4.24.0",
+    "@auth/drizzle-adapter": "^1.0.0",
+    "drizzle-orm": "^0.36.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "zod": "^3.23.0",
+    "mathjs": "^13.0.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.6.0",
+    "drizzle-kit": "^0.28.0",
+    "tsx": "^4.19.0",
+    "dotenv": "^16.4.0"
+  }
+}
