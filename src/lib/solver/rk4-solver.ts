@@ -171,7 +171,9 @@ export function solveTransient(
     solveArithmeticNodes(hTemps4, t + halfDt, network);
     const hk4 = computeAllDerivatives(hTemps4, t + halfDt, network);
 
-    const midTemps = new Map<string, number>();
+    // Start with all node temperatures (boundary + arithmetic nodes need to be present
+    // for conductor flow calculations in the second half-step)
+    const midTemps = new Map<string, number>(temperatures);
     for (const nodeId of network.diffusionNodeIds) {
       const T = temperatures.get(nodeId)!;
       const dT =
