@@ -100,6 +100,7 @@ interface EditorState {
   selectedHeatLoadId: string | null;
   showResultsOverlay: boolean;
   isDirty: boolean;
+  activeView: '3d' | 'network';
 
   // History
   history: EditorSnapshot[];
@@ -131,6 +132,7 @@ interface EditorState {
   clearSelection: () => void;
 
   setShowResultsOverlay: (show: boolean) => void;
+  setActiveView: (view: '3d' | 'network') => void;
 
   undo: () => void;
   redo: () => void;
@@ -158,6 +160,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedHeatLoadId: null,
   showResultsOverlay: false,
   isDirty: false,
+  activeView: '3d',
 
   history: [],
   historyIndex: -1,
@@ -324,6 +327,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ selectedNodeId: null, selectedConductorId: null, selectedHeatLoadId: null }),
 
   setShowResultsOverlay: (show) => set({ showResultsOverlay: show }),
+  setActiveView: (view) => set({ activeView: view }),
 
   pushHistory: () => {
     const { nodes, conductors, heatLoads, history, historyIndex } = get();
