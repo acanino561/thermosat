@@ -259,6 +259,49 @@
                 0 0 120px rgba(var(--tc-accent-rgb), 0.1);
   }
 
+  /* ── Glass utilities (dashboard compat) ── */
+  .glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  /* ── Legacy gradient utilities (dashboard compat) ── */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, var(--tc-accent), var(--tc-accent-dim));
+  }
+
+  .text-gradient-warm {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, var(--tc-accent), var(--tc-accent-dim));
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(var(--tc-accent-rgb), 0.3), 0 0 60px rgba(var(--tc-accent-rgb), 0.1);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(var(--tc-accent-rgb), 0.3), 0 0 60px rgba(var(--tc-accent-rgb), 0.1);
+  }
+
+  /* ── Grid pattern (dashboard compat) ── */
+  .grid-pattern {
+    background-image:
+      linear-gradient(var(--tc-grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--tc-grid-color) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+  }
+
   /* ── Surface styles ── */
   .surface {
     background-color: var(--tc-surface);
