@@ -21,7 +21,7 @@ export function DemoViewport3D() {
   return (
     <div className="h-full w-full relative bg-[#030810] overflow-hidden">
       <Canvas
-        camera={{ position: [5, 4, 6], fov: 45, near: 0.1, far: 200 }}
+        camera={{ position: [0, 8, 12], fov: 45, near: 0.1, far: 200 }}
         gl={{
           antialias: true,
           alpha: false,
@@ -34,7 +34,7 @@ export function DemoViewport3D() {
         }}
       >
         <color attach="background" args={['#030810']} />
-        <fog attach="fog" args={['#030810', 40, 80]} />
+        <fog attach="fog" args={['#030810', 50, 120]} />
         <Suspense fallback={null}>
           <CubeSatModel />
           <TimelineAnimator />
@@ -43,8 +43,8 @@ export function DemoViewport3D() {
             enablePan
             enableZoom
             enableRotate
-            minDistance={3}
-            maxDistance={50}
+            minDistance={2}
+            maxDistance={60}
             dampingFactor={0.05}
             enableDamping
             target={[0, 0, 0]}

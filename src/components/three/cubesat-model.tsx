@@ -13,6 +13,13 @@ import {
   ORBIT_PERIOD_MIN,
 } from '@/lib/demo/simulation-data';
 
+// ─── Constants ───────────────────────────────────────────────────────
+
+const EARTH_RADIUS = 3;
+const ORBIT_RADIUS = 4.5;
+const SUN_DIRECTION = new THREE.Vector3(1, 0.3, 0).normalize();
+const SUN_DISTANCE = 25;
+
 // ─── Thermal colormap ────────────────────────────────────────────────
 
 function temperatureToColor(temp: number): THREE.Color {
@@ -35,6 +42,17 @@ function temperatureToColor(temp: number): THREE.Color {
 
 function tempToHex(temp: number): string {
   return '#' + temperatureToColor(temp).getHexString();
+}
+
+// ─── Orbital position helper ─────────────────────────────────────────
+
+function getOrbitalPosition(timeMin: number): [number, number, number] {
+  const angle = ((timeMin % ORBIT_PERIOD_MIN) / ORBIT_PERIOD_MIN) * Math.PI * 2;
+  return [
+    Math.cos(angle) * ORBIT_RADIUS,
+    0,
+    Math.sin(angle) * ORBIT_RADIUS,
+  ];
 }
 
 // ─── Component panel ─────────────────────────────────────────────────
@@ -111,8 +129,8 @@ function Earth() {
   });
 
   return (
-    <mesh ref={meshRef} position={[0, -25, 0]}>
-      <sphereGeometry args={[18, 64, 64]} />
+    <mesh ref={meshRef} position={[0, 0, 0]}>
+      <sphereGeometry args={[EARTH_RADIUS, 64, 64]} />
       <meshStandardMaterial
         color="#1a5276"
         emissive="#0a2a40"
@@ -122,7 +140,7 @@ function Earth() {
       />
       {/* Atmosphere glow */}
       <mesh>
-        <sphereGeometry args={[18.3, 32, 32]} />
+        <sphereGeometry args={[EARTH_RADIUS * 1.02, 32, 32]} />
         <meshBasicMaterial
           color="#4fc3f7"
           transparent
@@ -139,7 +157,11 @@ function Earth() {
 
 function SunIndicator({ inEclipse }: { inEclipse: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const intensity = inEclipse ? 0.1 : 1.0;
+  const sunPos: [number, number, number] = [
+    SUN_DIRECTION.x * SUN_DISTANCE,
+    SUN_DIRECTION.y * SUN_DISTANCE,
+    SUN_DIRECTION.z * SUN_DISTANCE,
+  ];
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -149,9 +171,9 @@ function SunIndicator({ inEclipse }: { inEclipse: boolean }) {
   });
 
   return (
-    <group position={[20, 12, -10]}>
+    <group position={sunPos}>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[0.8, 16, 16]} />
+        <sphereGeometry args={[1.2, 16, 16]} />
         <meshBasicMaterial
           color={inEclipse ? '#443300' : '#ffdd00'}
           transparent
@@ -161,7 +183,7 @@ function SunIndicator({ inEclipse }: { inEclipse: boolean }) {
       {/* Glow */}
       {!inEclipse && (
         <mesh>
-          <sphereGeometry args={[1.5, 16, 16]} />
+          <sphereGeometry args={[2.0, 16, 16]} />
           <meshBasicMaterial
             color="#ffaa00"
             transparent
@@ -170,13 +192,7 @@ function SunIndicator({ inEclipse }: { inEclipse: boolean }) {
           />
         </mesh>
       )}
-      <directionalLight
-        position={[0, 0, 0]}
-        target-position={[0, 0, 0]}
-        intensity={intensity * 1.2}
-        color="#fff5e0"
-      />
-      <Html position={[0, 1.5, 0]} center style={{ pointerEvents: 'none' }}>
+      <Html position={[0, 2.0, 0]} center style={{ pointerEvents: 'none' }}>
         <div className="text-[9px] font-mono text-yellow-400/60 whitespace-nowrap">
           {inEclipse ? '☀ ECLIPSE' : '☀ SUNLIT'}
         </div>
@@ -191,13 +207,12 @@ function OrbitPath() {
   const points = useMemo(() => {
     const pts: [number, number, number][] = [];
     const segments = 128;
-    const radius = 22;
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
       pts.push([
-        Math.cos(angle) * radius,
-        -6 + Math.sin(angle) * 2,
-        Math.sin(angle) * radius,
+        Math.cos(angle) * ORBIT_RADIUS,
+        0,
+        Math.sin(angle) * ORBIT_RADIUS,
       ]);
     }
     return pts;
@@ -209,34 +224,20 @@ function OrbitPath() {
       color="#00e5ff"
       lineWidth={0.5}
       transparent
-      opacity={0.15}
+      opacity={0.25}
       dashed
-      dashSize={0.8}
-      gapSize={0.4}
+      dashSize={0.3}
+      gapSize={0.15}
     />
   );
 }
 
-// ─── Satellite position indicator on orbit ───────────────────────────
+// ─── Satellite position marker on orbit ──────────────────────────────
 
-function SatellitePositionIndicator() {
-  const currentTime = useTimelineStore((s) => s.currentTime);
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  const position = useMemo((): [number, number, number] => {
-    const phase = (currentTime % ORBIT_PERIOD_MIN) / ORBIT_PERIOD_MIN;
-    const angle = phase * Math.PI * 2;
-    const radius = 22;
-    return [
-      Math.cos(angle) * radius,
-      -6 + Math.sin(angle) * 2,
-      Math.sin(angle) * radius,
-    ];
-  }, [currentTime]);
-
+function SatelliteMarker({ position }: { position: [number, number, number] }) {
   return (
-    <mesh ref={meshRef} position={position}>
-      <sphereGeometry args={[0.25, 8, 8]} />
+    <mesh position={position}>
+      <sphereGeometry args={[0.08, 8, 8]} />
       <meshBasicMaterial color="#00e5ff" />
     </mesh>
   );
@@ -290,6 +291,19 @@ export function CubeSatModel() {
 
   const eclipse = useMemo(() => isInEclipse(currentTime), [currentTime]);
 
+  // Satellite orbital position (driven by timeline)
+  const satPosition = useMemo(
+    () => getOrbitalPosition(currentTime),
+    [currentTime],
+  );
+
+  // Satellite facing direction: tangent to orbit (velocity direction)
+  const satRotationY = useMemo(() => {
+    const angle = ((currentTime % ORBIT_PERIOD_MIN) / ORBIT_PERIOD_MIN) * Math.PI * 2;
+    // Tangent direction: perpendicular to radius, pointing forward along orbit
+    return -angle + Math.PI / 2;
+  }, [currentTime]);
+
   // Map node index → node id for selection
   const handleSelect = useCallback(
     (nodeIndex: number) => {
@@ -304,25 +318,24 @@ export function CubeSatModel() {
     setHoveredNode(nodeIndex);
   }, []);
 
-  // Gentle rotation when not interacting
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.05;
-    }
-  });
+  // CubeSat dimensions (6U ≈ 10×20×30 cm, scaled up for visibility)
+  const bodyW = 0.3;
+  const bodyH = 0.6;
+  const bodyD = 0.9;
 
-  // CubeSat dimensions (6U ≈ 10×20×30 cm, scaled up ~10x for visibility)
-  // Body: 1 × 2 × 3
-  const bodyW = 1;
-  const bodyH = 2;
-  const bodyD = 3;
+  // Sun light position
+  const sunLightPos: [number, number, number] = [
+    SUN_DIRECTION.x * SUN_DISTANCE,
+    SUN_DIRECTION.y * SUN_DISTANCE,
+    SUN_DIRECTION.z * SUN_DISTANCE,
+  ];
 
   return (
     <>
       {/* Lighting */}
       <ambientLight intensity={eclipse ? 0.08 : 0.2} />
       <directionalLight
-        position={[20, 12, -10]}
+        position={sunLightPos}
         intensity={eclipse ? 0.05 : 1.0}
         color="#fff5e0"
         castShadow
@@ -333,34 +346,38 @@ export function CubeSatModel() {
         color="#4488cc"
       />
       <pointLight
-        position={[0, 0, 0]}
+        position={satPosition}
         intensity={eclipse ? 0.02 : 0.1}
         color="#00e5ff"
-        distance={15}
+        distance={3}
       />
 
       {/* Environment */}
       <Earth />
       <SunIndicator inEclipse={eclipse} />
       <OrbitPath />
-      <SatellitePositionIndicator />
+      <SatelliteMarker position={satPosition} />
 
-      {/* Eclipse shadow effect */}
+      {/* Eclipse shadow effect around satellite */}
       {eclipse && (
-        <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[12, 16, 16]} />
+        <mesh position={satPosition}>
+          <sphereGeometry args={[2, 16, 16]} />
           <meshBasicMaterial
             color="#000000"
             transparent
-            opacity={0.3}
+            opacity={0.2}
             side={THREE.BackSide}
             depthWrite={false}
           />
         </mesh>
       )}
 
-      {/* CubeSat group */}
-      <group ref={groupRef}>
+      {/* CubeSat group — positioned on orbit */}
+      <group
+        ref={groupRef}
+        position={satPosition}
+        rotation={[0, satRotationY, 0]}
+      >
         {/* Main bus body — slightly transparent to see internals */}
         <ThermalPanel
           nodeIndex={0}
@@ -384,12 +401,12 @@ export function CubeSatModel() {
           />
         </mesh>
 
-        {/* +X face panel (separate thermal node — right side) */}
+        {/* +X face panel (right side) */}
         <ThermalPanel
           nodeIndex={0}
           temperature={temperatures[0]}
           position={[bodyW / 2 + 0.02, 0, 0]}
-          args={[0.04, bodyH * 0.9, bodyD * 0.9]}
+          args={[0.02, bodyH * 0.9, bodyD * 0.9]}
           onSelect={handleSelect}
           onHover={handleHover}
         />
@@ -399,31 +416,31 @@ export function CubeSatModel() {
           nodeIndex={1}
           temperature={temperatures[1]}
           position={[-bodyW / 2 - 0.02, 0, 0]}
-          args={[0.04, bodyH * 0.9, bodyD * 0.9]}
+          args={[0.02, bodyH * 0.9, bodyD * 0.9]}
           onSelect={handleSelect}
           onHover={handleHover}
         />
 
         {/* +Y Solar panel (deployable — right wing) */}
-        <group position={[0, bodyH / 2 + 0.05, 0]}>
+        <group position={[0, bodyH / 2 + 0.02, 0]}>
           {/* Hinge */}
           <mesh position={[0, 0, 0]}>
-            <cylinderGeometry args={[0.03, 0.03, bodyD * 0.8, 8]} />
+            <cylinderGeometry args={[0.01, 0.01, bodyD * 0.8, 8]} />
             <meshStandardMaterial color="#444" metalness={0.9} roughness={0.3} />
           </mesh>
           {/* Panel */}
           <ThermalPanel
             nodeIndex={2}
             temperature={temperatures[2]}
-            position={[0, 1.2, 0]}
-            args={[bodyW * 0.8, 2.2, bodyD * 0.95]}
+            position={[0, 0.35, 0]}
+            args={[bodyW * 0.8, 0.65, bodyD * 0.95]}
             rotation={[0, 0, 0.08]}
             onSelect={handleSelect}
             onHover={handleHover}
           />
           {/* Solar cell grid lines */}
-          <mesh position={[0, 1.2, 0]} rotation={[0, 0, 0.08]}>
-            <boxGeometry args={[bodyW * 0.81, 2.21, bodyD * 0.96]} />
+          <mesh position={[0, 0.35, 0]} rotation={[0, 0, 0.08]}>
+            <boxGeometry args={[bodyW * 0.81, 0.66, bodyD * 0.96]} />
             <meshBasicMaterial
               color="#223344"
               wireframe
@@ -434,24 +451,24 @@ export function CubeSatModel() {
         </group>
 
         {/* -Y Solar panel (deployable — left wing) */}
-        <group position={[0, -bodyH / 2 - 0.05, 0]}>
+        <group position={[0, -bodyH / 2 - 0.02, 0]}>
           {/* Hinge */}
           <mesh position={[0, 0, 0]}>
-            <cylinderGeometry args={[0.03, 0.03, bodyD * 0.8, 8]} />
+            <cylinderGeometry args={[0.01, 0.01, bodyD * 0.8, 8]} />
             <meshStandardMaterial color="#444" metalness={0.9} roughness={0.3} />
           </mesh>
           {/* Panel */}
           <ThermalPanel
             nodeIndex={3}
             temperature={temperatures[3]}
-            position={[0, -1.2, 0]}
-            args={[bodyW * 0.8, 2.2, bodyD * 0.95]}
+            position={[0, -0.35, 0]}
+            args={[bodyW * 0.8, 0.65, bodyD * 0.95]}
             rotation={[0, 0, -0.08]}
             onSelect={handleSelect}
             onHover={handleHover}
           />
-          <mesh position={[0, -1.2, 0]} rotation={[0, 0, -0.08]}>
-            <boxGeometry args={[bodyW * 0.81, 2.21, bodyD * 0.96]} />
+          <mesh position={[0, -0.35, 0]} rotation={[0, 0, -0.08]}>
+            <boxGeometry args={[bodyW * 0.81, 0.66, bodyD * 0.96]} />
             <meshBasicMaterial
               color="#223344"
               wireframe
@@ -465,7 +482,7 @@ export function CubeSatModel() {
         <ThermalPanel
           nodeIndex={4}
           temperature={temperatures[4]}
-          position={[0, -0.3, -0.4]}
+          position={[0, -0.1, -0.12]}
           args={[bodyW * 0.6, bodyH * 0.35, bodyD * 0.3]}
           onSelect={handleSelect}
           onHover={handleHover}
@@ -475,33 +492,33 @@ export function CubeSatModel() {
         <ThermalPanel
           nodeIndex={5}
           temperature={temperatures[5]}
-          position={[0, 0.3, 0.3]}
+          position={[0, 0.1, 0.1]}
           args={[bodyW * 0.55, bodyH * 0.25, bodyD * 0.25]}
           onSelect={handleSelect}
           onHover={handleHover}
         />
 
         {/* Antenna on +Z face (cylinder + cone) */}
-        <group position={[0, 0, bodyD / 2 + 0.1]}>
+        <group position={[0, 0, bodyD / 2 + 0.03]}>
           <mesh position={[0, 0, 0]}>
-            <cylinderGeometry args={[0.06, 0.06, 0.5, 8]} />
+            <cylinderGeometry args={[0.02, 0.02, 0.15, 8]} />
             <meshStandardMaterial color="#888" metalness={0.9} roughness={0.2} />
           </mesh>
-          <mesh position={[0, 0, 0.35]} rotation={[Math.PI / 2, 0, 0]}>
-            <coneGeometry args={[0.15, 0.3, 8]} />
+          <mesh position={[0, 0, 0.1]} rotation={[Math.PI / 2, 0, 0]}>
+            <coneGeometry args={[0.05, 0.1, 8]} />
             <meshStandardMaterial color="#aaa" metalness={0.8} roughness={0.3} />
           </mesh>
         </group>
 
         {/* Star tracker on -Z face */}
-        <group position={[0.2, 0.2, -bodyD / 2 - 0.08]}>
+        <group position={[0.06, 0.06, -bodyD / 2 - 0.03]}>
           <mesh>
-            <cylinderGeometry args={[0.1, 0.1, 0.15, 12]} />
+            <cylinderGeometry args={[0.03, 0.03, 0.05, 12]} />
             <meshStandardMaterial color="#333" metalness={0.7} roughness={0.4} />
           </mesh>
           {/* Lens */}
-          <mesh position={[0, 0, -0.08]} rotation={[Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.08, 16]} />
+          <mesh position={[0, 0, -0.03]} rotation={[Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.025, 16]} />
             <meshStandardMaterial
               color="#112244"
               emissive="#001133"
@@ -514,37 +531,37 @@ export function CubeSatModel() {
 
         {/* HUD temperature readouts */}
         <HUDReadout
-          position={[bodyW / 2 + 0.6, 0, 0]}
+          position={[bodyW / 2 + 0.3, 0, 0]}
           name="+X"
           temp={temperatures[0]}
           visible={true}
         />
         <HUDReadout
-          position={[-bodyW / 2 - 0.6, 0, 0]}
+          position={[-bodyW / 2 - 0.3, 0, 0]}
           name="-X"
           temp={temperatures[1]}
           visible={true}
         />
         <HUDReadout
-          position={[0, bodyH / 2 + 2.5, 0]}
+          position={[0, bodyH / 2 + 0.8, 0]}
           name="+Y"
           temp={temperatures[2]}
           visible={true}
         />
         <HUDReadout
-          position={[0, -bodyH / 2 - 2.5, 0]}
+          position={[0, -bodyH / 2 - 0.8, 0]}
           name="-Y"
           temp={temperatures[3]}
           visible={true}
         />
         <HUDReadout
-          position={[bodyW / 2 + 0.5, -0.3, -0.4]}
+          position={[bodyW / 2 + 0.3, -0.1, -0.12]}
           name="BAT"
           temp={temperatures[4]}
           visible={true}
         />
         <HUDReadout
-          position={[bodyW / 2 + 0.5, 0.3, 0.3]}
+          position={[bodyW / 2 + 0.3, 0.1, 0.1]}
           name="FC"
           temp={temperatures[5]}
           visible={true}
@@ -553,7 +570,7 @@ export function CubeSatModel() {
 
       {/* Hover tooltip */}
       {hoveredNode !== null && hoveredNode < nodeProfiles.length && (
-        <Html position={[0, 4, 0]} center style={{ pointerEvents: 'none' }}>
+        <Html position={satPosition} center style={{ pointerEvents: 'none' }}>
           <div
             className="px-3 py-2 rounded-md text-[11px] font-mono shadow-2xl whitespace-nowrap"
             style={{
@@ -561,6 +578,7 @@ export function CubeSatModel() {
               border: `1px solid ${tempToHex(temperatures[hoveredNode])}55`,
               color: '#e2e8f0',
               backdropFilter: 'blur(12px)',
+              transform: 'translateY(-40px)',
             }}
           >
             <div className="font-semibold mb-0.5" style={{ color: tempToHex(temperatures[hoveredNode]) }}>
@@ -577,11 +595,6 @@ export function CubeSatModel() {
           </div>
         </Html>
       )}
-
-      {/* Background grid */}
-      <group position={[0, -8, 0]}>
-        <gridHelper args={[60, 60, '#0a1a2a', '#061018']} />
-      </group>
     </>
   );
 }
