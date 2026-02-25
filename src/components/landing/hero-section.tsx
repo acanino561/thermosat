@@ -1,133 +1,233 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Zap } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef } from 'react';
 import Link from 'next/link';
 
 const SatelliteScene = dynamic(
-  () =>
-    import('@/components/three/satellite-scene').then(
-      (mod) => mod.SatelliteScene,
-    ),
+  () => import('@/components/three/satellite-scene').then((mod) => mod.SatelliteScene),
   { ssr: false },
 );
 
-const headlineWords = 'Spacecraft Thermal Analysis. Reimagined.'.split(' ');
-
-const hudData = [
-  { label: 'SOLAR PANEL', value: '+142°C', position: 'top-[20%] left-[10%]', color: 'text-accent-orange' },
-  { label: 'ANTENNA', value: '-45°C', position: 'top-[15%] right-[12%]', color: 'text-accent-cyan' },
-  { label: 'BUS CORE', value: '+22°C', position: 'bottom-[35%] left-[8%]', color: 'text-green-400' },
-  { label: 'RADIATOR', value: '-78°C', position: 'bottom-[30%] right-[10%]', color: 'text-accent-blue' },
+/* Telemetry data overlays */
+const telemetryReadouts = [
+  { label: 'SOLAR PANEL +Y', value: '+142.3°C', status: 'WARN', x: 'right-[5%]', y: 'top-[22%]' },
+  { label: 'BUS CORE', value: '+21.7°C', status: 'NOM', x: 'right-[8%]', y: 'top-[42%]' },
+  { label: 'RADIATOR -Z', value: '-78.4°C', status: 'NOM', x: 'right-[3%]', y: 'top-[58%]' },
+  { label: 'ANTENNA FEED', value: '-12.6°C', status: 'NOM', x: 'right-[12%]', y: 'top-[74%]' },
 ];
 
-export function HeroSection() {
+function StatusBar() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* 3D Background */}
-      <SatelliteScene />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 2.5, duration: 0.8 }}
+      className="absolute bottom-0 left-0 right-0 flex items-center gap-6 px-6 lg:px-10 py-3 font-mono text-[10px] tracking-[0.15em] overflow-x-auto"
+      style={{ borderTop: '1px solid var(--tc-border)', color: 'var(--tc-text-muted)' }}
+    >
+      <span className="flex items-center gap-2 shrink-0">
+        <span className="status-dot" />
+        SYS: NOMINAL
+      </span>
+      <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
+      <span className="shrink-0">ORBIT: LEO 408 km × 410 km</span>
+      <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
+      <span className="shrink-0">INCL: 51.64°</span>
+      <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
+      <span className="shrink-0">β ANGLE: 52.3°</span>
+      <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
+      <span className="shrink-0">ECLIPSE: 35.2 min</span>
+      <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
+      <span className="shrink-0">Qs: 1361 W/m²</span>
+    </motion.div>
+  );
+}
 
-      {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-b from-space-base/30 via-transparent to-space-base z-10" />
-      <div className="absolute inset-0 bg-gradient-to-r from-space-base/50 via-transparent to-space-base/50 z-10" />
+export function HeroSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start start', 'end start'],
+  });
 
-      {/* HUD floating data readouts */}
+  const gridY = useTransform(scrollYProgress, [0, 1], [0, -80]);
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, 60]);
+  const sceneY = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const fadeOut = useTransform(scrollYProgress, [0, 0.6, 1], [1, 1, 0]);
+
+  return (
+    <section
+      ref={sectionRef}
+      className="relative min-h-screen flex flex-col overflow-hidden"
+      style={{ borderBottom: '1px solid var(--tc-border)' }}
+    >
+      {/* Engineering grid background with parallax */}
+      <motion.div
+        style={{ y: gridY }}
+        className="absolute inset-0 eng-grid-dense pointer-events-none"
+        aria-hidden
+      />
+
+      {/* 3D Scene — positioned right side on desktop */}
+      <motion.div
+        style={{ y: sceneY, opacity: fadeOut }}
+        className="absolute inset-0 lg:left-[35%]"
+      >
+        <SatelliteScene />
+        {/* Scene overlay gradient for text readability */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(90deg, var(--tc-base) 0%, var(--tc-base) 20%, transparent 55%, transparent 100%)`,
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(180deg, var(--tc-base) 0%, transparent 15%, transparent 85%, var(--tc-base) 100%)`,
+          }}
+        />
+      </motion.div>
+
+      {/* Telemetry readouts floating over 3D scene */}
       <div className="absolute inset-0 z-20 pointer-events-none hidden lg:block">
-        {hudData.map((item, i) => (
+        {telemetryReadouts.map((item, i) => (
           <motion.div
             key={item.label}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1.5 + i * 0.2, duration: 0.5 }}
-            className={`absolute ${item.position}`}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.8 + i * 0.15, duration: 0.4 }}
+            className={`absolute ${item.x} ${item.y}`}
           >
-            <div className="glass rounded-lg px-3 py-2 text-xs font-mono">
-              <div className="text-muted-foreground text-[10px] tracking-widest">{item.label}</div>
-              <div className={`text-lg font-bold ${item.color}`}>{item.value}</div>
+            <div className="font-mono text-[10px] tracking-[0.1em] flex items-baseline gap-3">
+              <span style={{ color: 'var(--tc-text-muted)' }}>{item.label}</span>
+              <span
+                className="text-sm font-semibold tabular-nums"
+                style={{ color: item.status === 'WARN' ? 'var(--tc-accent)' : 'var(--tc-text)' }}
+              >
+                {item.value}
+              </span>
             </div>
+            <div
+              className="h-px mt-1"
+              style={{
+                background: `linear-gradient(90deg, rgba(var(--tc-accent-rgb), ${item.status === 'WARN' ? '0.4' : '0.1'}), transparent)`,
+                width: '80px',
+              }}
+            />
           </motion.div>
         ))}
       </div>
 
-      {/* Hero content */}
-      <div className="relative z-20 max-w-5xl mx-auto px-4 text-center">
+      {/* Main content — left-aligned, asymmetric */}
+      <motion.div
+        style={{ y: contentY, opacity: fadeOut }}
+        className="relative z-20 flex-1 flex flex-col justify-center px-6 lg:px-10 max-w-[1400px] mx-auto w-full pt-20"
+      >
+        {/* System status tag */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-8"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className="font-mono text-[10px] tracking-[0.2em] mb-8 flex items-center gap-3"
+          style={{ color: 'var(--tc-text-muted)' }}
         >
-          <Zap className="h-3.5 w-3.5 text-accent-orange" />
-          <span className="text-xs text-muted-foreground tracking-wide">
-            Now in public beta — Free for individuals
-          </span>
+          <span className="status-dot" />
+          THERMAL ANALYSIS PLATFORM v2.1 — PUBLIC BETA
         </motion.div>
 
-        <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05]">
-          {headlineWords.map((word, i) => (
+        {/* Massive asymmetric headline */}
+        <div className="max-w-3xl">
+          <h1 className="font-mono font-bold tracking-tighter leading-[0.9]">
             <motion.span
-              key={i}
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                delay: 0.5 + i * 0.1,
-                duration: 0.6,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className={`inline-block mr-[0.3em] ${
-                word === 'Reimagined.' ? 'text-gradient' : ''
-              }`}
+              transition={{ delay: 0.5, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="block text-display-xl"
+              style={{ color: 'var(--tc-text)' }}
             >
-              {word}
+              SPACECRAFT
             </motion.span>
-          ))}
-        </h1>
+            <motion.span
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="block text-display-xl"
+              style={{ color: 'var(--tc-text)' }}
+            >
+              THERMAL
+            </motion.span>
+            <motion.span
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="block text-display-xl text-accent"
+            >
+              ANALYSIS
+            </motion.span>
+          </h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2, duration: 0.6 }}
-          className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
-        >
-          Cloud-native thermal simulation for the NewSpace era. Build models,
-          run analyses, and collaborate — all from your browser. No licenses. No installs.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.5, duration: 0.6 }}
-          className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-        >
-          <Button variant="glow" size="xl" asChild>
-            <Link href="/signup" className="gap-2">
-              Start Free
-              <ArrowRight className="h-5 w-5" />
-            </Link>
-          </Button>
-          <Button variant="outline" size="xl" asChild>
-            <Link href="#how-it-works">See How It Works</Link>
-          </Button>
-        </motion.div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2, duration: 1 }}
-          className="mt-20"
-        >
+          {/* Stefan-Boltzmann equation as design element */}
           <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="mx-auto w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 0.8 }}
+            className="mt-8 font-mono text-sm leading-relaxed"
+            style={{ color: 'var(--tc-text-muted)' }}
           >
-            <motion.div className="w-1 h-2 rounded-full bg-white/40" />
+            <span className="text-accent opacity-60">▸</span>{' '}
+            <span style={{ color: 'var(--tc-text-secondary)' }}>
+              q<sub>rad</sub> = εσT<sup>4</sup>
+            </span>
+            <span className="mx-3" style={{ color: 'var(--tc-text-dim)' }}>│</span>
+            <span style={{ color: 'var(--tc-text-secondary)' }}>
+              Q<sub>solar</sub> + Q<sub>albedo</sub> + Q<sub>IR</sub> + Q<sub>int</sub> = Q<sub>rad</sub> + mc(dT/dt)
+            </span>
           </motion.div>
-        </motion.div>
-      </div>
+
+          {/* Description */}
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.4, duration: 0.5 }}
+            className="mt-6 text-base max-w-lg leading-relaxed font-sans"
+            style={{ color: 'var(--tc-text-secondary)' }}
+          >
+            Cloud-native thermal simulation for orbital systems. 
+            Build models, run transient analyses, visualize temperature distributions. 
+            No licenses. No installs. Engineering-grade accuracy.
+          </motion.p>
+
+          {/* CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.6, duration: 0.5 }}
+            className="mt-10 flex flex-wrap items-center gap-4"
+          >
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-6 py-3.5 transition-all duration-200 hover:shadow-[0_0_30px_rgba(var(--tc-accent-rgb),0.3)]"
+              style={{ backgroundColor: 'var(--tc-accent)', color: '#fff' }}
+            >
+              ACCESS CONSOLE
+              <span>→</span>
+            </Link>
+            <Link
+              href="#analysis"
+              className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-6 py-3.5 transition-colors duration-200 hover:text-accent"
+              style={{ color: 'var(--tc-text-secondary)', border: '1px solid var(--tc-border)' }}
+            >
+              VIEW DOCUMENTATION
+            </Link>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Bottom status bar */}
+      <StatusBar />
     </section>
   );
 }

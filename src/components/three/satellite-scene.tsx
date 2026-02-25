@@ -2,28 +2,31 @@
 
 import { useRef, useMemo, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, Stars } from '@react-three/drei';
+import { Float } from '@react-three/drei';
 import * as THREE from 'three';
 
 function Satellite() {
   const groupRef = useRef<THREE.Group>(null);
 
-  // Thermal gradient material — hot (orange/red) to cold (blue)
+  /* Thermal gradient shader — vivid heat-map style */
   const bodyMaterial = useMemo(() => {
     return new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
-        colorHot: { value: new THREE.Color('#f97316') },
-        colorWarm: { value: new THREE.Color('#ef4444') },
-        colorCool: { value: new THREE.Color('#3b82f6') },
-        colorCold: { value: new THREE.Color('#06b6d4') },
+        colorHot: { value: new THREE.Color('#FF3D00') },
+        colorWarm: { value: new THREE.Color('#FF8C00') },
+        colorMid: { value: new THREE.Color('#AAAAAA') },
+        colorCool: { value: new THREE.Color('#0088CC') },
+        colorCold: { value: new THREE.Color('#00CCFF') },
       },
       vertexShader: `
         varying vec3 vPosition;
         varying vec3 vNormal;
+        varying vec3 vWorldPos;
         void main() {
           vPosition = position;
           vNormal = normalize(normalMatrix * normal);
+          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
@@ -31,24 +34,43 @@ function Satellite() {
         uniform float time;
         uniform vec3 colorHot;
         uniform vec3 colorWarm;
+        uniform vec3 colorMid;
         uniform vec3 colorCool;
         uniform vec3 colorCold;
         varying vec3 vPosition;
         varying vec3 vNormal;
+        varying vec3 vWorldPos;
         void main() {
-          float gradient = (vPosition.y + 1.0) / 2.0;
-          gradient += sin(time * 0.5 + vPosition.x * 3.0) * 0.1;
-          gradient = clamp(gradient, 0.0, 1.0);
+          // Temperature gradient based on sun direction
+          vec3 sunDir = normalize(vec3(1.0, 0.3, 0.5));
+          float sunFacing = dot(vNormal, sunDir) * 0.5 + 0.5;
+          
+          // Add position-based variation
+          float posVariation = sin(vPosition.x * 3.0 + time * 0.3) * 0.08;
+          float temp = clamp(sunFacing + posVariation, 0.0, 1.0);
+          
+          // 5-stop gradient: cold → cool → mid → warm → hot
           vec3 color;
-          if (gradient > 0.66) {
-            color = mix(colorWarm, colorHot, (gradient - 0.66) * 3.0);
-          } else if (gradient > 0.33) {
-            color = mix(colorCool, colorWarm, (gradient - 0.33) * 3.0);
+          if (temp > 0.75) {
+            color = mix(colorWarm, colorHot, (temp - 0.75) * 4.0);
+          } else if (temp > 0.5) {
+            color = mix(colorMid, colorWarm, (temp - 0.5) * 4.0);
+          } else if (temp > 0.25) {
+            color = mix(colorCool, colorMid, (temp - 0.25) * 4.0);
           } else {
-            color = mix(colorCold, colorCool, gradient * 3.0);
+            color = mix(colorCold, colorCool, temp * 4.0);
           }
-          float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.0);
-          color += fresnel * 0.15;
+          
+          // Subtle fresnel rim
+          float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 3.0);
+          color += fresnel * 0.08;
+          
+          // Subtle wireframe-like edge detection
+          vec3 fw = fwidth(vPosition * 4.0);
+          vec3 grid = smoothstep(vec3(0.0), fw * 1.5, abs(fract(vPosition * 4.0 - 0.5) - 0.5));
+          float gridLine = 1.0 - min(min(grid.x, grid.y), grid.z) * 0.15;
+          color *= gridLine;
+          
           gl_FragColor = vec4(color, 1.0);
         }
       `,
@@ -57,174 +79,148 @@ function Satellite() {
 
   useFrame((state) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.elapsedTime * 0.15;
-      groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.1) * 0.1;
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.08;
+      groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.05) * 0.05 + 0.1;
     }
     bodyMaterial.uniforms.time.value = state.clock.elapsedTime;
   });
 
+  /* Solar panel material — dark with subtle blue emission */
   const panelMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#1a1a3e',
-        metalness: 0.8,
-        roughness: 0.2,
-        emissive: '#3b82f6',
-        emissiveIntensity: 0.15,
+        color: '#0A0A20',
+        metalness: 0.9,
+        roughness: 0.15,
+        emissive: '#001133',
+        emissiveIntensity: 0.3,
+      }),
+    [],
+  );
+
+  /* Metallic structural material */
+  const structMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#888888',
+        metalness: 0.95,
+        roughness: 0.1,
+      }),
+    [],
+  );
+
+  /* Gold MLI material */
+  const mliMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#C8A832',
+        metalness: 0.7,
+        roughness: 0.3,
+        emissive: '#3A2800',
+        emissiveIntensity: 0.1,
       }),
     [],
   );
 
   return (
-    <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.5}>
-      <group ref={groupRef}>
-        {/* Main body */}
+    <Float speed={0.8} rotationIntensity={0.15} floatIntensity={0.3}>
+      <group ref={groupRef} position={[0.5, 0, 0]}>
+        {/* Main body with thermal gradient */}
         <mesh material={bodyMaterial}>
-          <boxGeometry args={[1.2, 1.2, 1.2]} />
+          <boxGeometry args={[1.3, 1.0, 1.1]} />
+        </mesh>
+
+        {/* MLI blanket strips on body */}
+        <mesh position={[0, -0.51, 0]} rotation={[0, 0, 0]}>
+          <boxGeometry args={[1.32, 0.02, 1.12]} />
+          <meshStandardMaterial {...mliMat} />
         </mesh>
 
         {/* Solar panel left */}
-        <mesh position={[-2.2, 0, 0]} material={panelMat}>
-          <boxGeometry args={[2, 1.4, 0.05]} />
-        </mesh>
-        {/* Solar panel grid lines left */}
-        <mesh position={[-2.2, 0, 0.03]}>
-          <boxGeometry args={[1.95, 0.005, 0.01]} />
-          <meshBasicMaterial color="#3b82f6" />
-        </mesh>
-        <mesh position={[-2.2, 0.35, 0.03]}>
-          <boxGeometry args={[1.95, 0.005, 0.01]} />
-          <meshBasicMaterial color="#3b82f6" />
-        </mesh>
-        <mesh position={[-2.2, -0.35, 0.03]}>
-          <boxGeometry args={[1.95, 0.005, 0.01]} />
-          <meshBasicMaterial color="#3b82f6" />
-        </mesh>
+        <group position={[-2.4, 0, 0]}>
+          <mesh material={panelMat}>
+            <boxGeometry args={[2.2, 1.2, 0.04]} />
+          </mesh>
+          {/* Panel cell grid */}
+          {[-0.4, 0, 0.4].map((yOff) => (
+            <mesh key={yOff} position={[0, yOff, 0.025]}>
+              <boxGeometry args={[2.15, 0.003, 0.005]} />
+              <meshBasicMaterial color="#003366" />
+            </mesh>
+          ))}
+          {[-0.5, 0, 0.5].map((xOff) => (
+            <mesh key={xOff} position={[xOff, 0, 0.025]}>
+              <boxGeometry args={[0.003, 1.15, 0.005]} />
+              <meshBasicMaterial color="#003366" />
+            </mesh>
+          ))}
+        </group>
 
         {/* Solar panel right */}
-        <mesh position={[2.2, 0, 0]} material={panelMat}>
-          <boxGeometry args={[2, 1.4, 0.05]} />
+        <group position={[2.4, 0, 0]}>
+          <mesh material={panelMat}>
+            <boxGeometry args={[2.2, 1.2, 0.04]} />
+          </mesh>
+          {[-0.4, 0, 0.4].map((yOff) => (
+            <mesh key={yOff} position={[0, yOff, 0.025]}>
+              <boxGeometry args={[2.15, 0.003, 0.005]} />
+              <meshBasicMaterial color="#003366" />
+            </mesh>
+          ))}
+          {[-0.5, 0, 0.5].map((xOff) => (
+            <mesh key={xOff} position={[xOff, 0, 0.025]}>
+              <boxGeometry args={[0.003, 1.15, 0.005]} />
+              <meshBasicMaterial color="#003366" />
+            </mesh>
+          ))}
+        </group>
+
+        {/* Panel arms */}
+        <mesh position={[-1.2, 0, 0]} material={structMat}>
+          <boxGeometry args={[0.5, 0.06, 0.06]} />
         </mesh>
-        {/* Solar panel grid lines right */}
-        <mesh position={[2.2, 0, 0.03]}>
-          <boxGeometry args={[1.95, 0.005, 0.01]} />
-          <meshBasicMaterial color="#3b82f6" />
-        </mesh>
-        <mesh position={[2.2, 0.35, 0.03]}>
-          <boxGeometry args={[1.95, 0.005, 0.01]} />
-          <meshBasicMaterial color="#3b82f6" />
-        </mesh>
-        <mesh position={[2.2, -0.35, 0.03]}>
-          <boxGeometry args={[1.95, 0.005, 0.01]} />
-          <meshBasicMaterial color="#3b82f6" />
+        <mesh position={[1.2, 0, 0]} material={structMat}>
+          <boxGeometry args={[0.5, 0.06, 0.06]} />
         </mesh>
 
         {/* Antenna dish */}
-        <mesh position={[0, 0.9, 0]} rotation={[0.3, 0, 0]}>
-          <cylinderGeometry args={[0.4, 0.25, 0.1, 16]} />
-          <meshStandardMaterial color="#666" metalness={0.9} roughness={0.1} />
+        <mesh position={[0, 0.7, 0]} rotation={[0.25, 0, 0]} material={structMat}>
+          <cylinderGeometry args={[0.35, 0.2, 0.08, 24]} />
         </mesh>
-        <mesh position={[0, 1.0, 0.15]}>
-          <cylinderGeometry args={[0.02, 0.02, 0.3, 8]} />
-          <meshStandardMaterial color="#888" metalness={0.9} roughness={0.1} />
+        <mesh position={[0, 0.85, 0.12]} material={structMat}>
+          <cylinderGeometry args={[0.015, 0.015, 0.25, 8]} />
         </mesh>
 
-        {/* Panel arms */}
-        <mesh position={[-1.1, 0, 0]}>
-          <boxGeometry args={[0.6, 0.08, 0.08]} />
-          <meshStandardMaterial color="#555" metalness={0.7} roughness={0.3} />
-        </mesh>
-        <mesh position={[1.1, 0, 0]}>
-          <boxGeometry args={[0.6, 0.08, 0.08]} />
-          <meshStandardMaterial color="#555" metalness={0.7} roughness={0.3} />
+        {/* Thruster nozzles (bottom) */}
+        {[[-0.35, -0.55, 0.35], [0.35, -0.55, 0.35], [-0.35, -0.55, -0.35], [0.35, -0.55, -0.35]].map((pos, i) => (
+          <mesh key={i} position={pos as [number, number, number]} material={structMat}>
+            <cylinderGeometry args={[0.04, 0.06, 0.12, 8]} />
+          </mesh>
+        ))}
+
+        {/* Radiator panels (small, on -Z face) */}
+        <mesh position={[0, 0, -0.6]}>
+          <boxGeometry args={[0.8, 0.6, 0.02]} />
+          <meshStandardMaterial color="#222222" metalness={0.3} roughness={0.8} />
         </mesh>
       </group>
     </Float>
   );
 }
 
-function Earth() {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  const material = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: {
-          time: { value: 0 },
-        },
-        vertexShader: `
-          varying vec3 vNormal;
-          varying vec3 vPosition;
-          void main() {
-            vNormal = normalize(normalMatrix * normal);
-            vPosition = position;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform float time;
-          varying vec3 vNormal;
-          varying vec3 vPosition;
-          void main() {
-            vec3 lightDir = normalize(vec3(1.0, 0.5, 1.0));
-            float diffuse = max(dot(vNormal, lightDir), 0.0);
-            vec3 oceanColor = vec3(0.05, 0.15, 0.35);
-            vec3 landColor = vec3(0.08, 0.25, 0.12);
-            float landMask = step(0.5, fract(sin(dot(vPosition.xy * 3.0, vec2(12.9898, 78.233))) * 43758.5453));
-            vec3 baseColor = mix(oceanColor, landColor, landMask * 0.5);
-            vec3 color = baseColor * (0.3 + diffuse * 0.7);
-            float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 3.0);
-            color += vec3(0.2, 0.5, 1.0) * fresnel * 0.4;
-            gl_FragColor = vec4(color, 1.0);
-          }
-        `,
-      }),
-    [],
-  );
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = state.clock.elapsedTime * 0.05;
-    }
-    material.uniforms.time.value = state.clock.elapsedTime;
-  });
-
-  return (
-    <group position={[3, -4, -10]}>
-      {/* Earth */}
-      <mesh ref={meshRef} material={material}>
-        <sphereGeometry args={[5, 64, 64]} />
-      </mesh>
-      {/* Atmosphere glow */}
-      <mesh>
-        <sphereGeometry args={[5.15, 64, 64]} />
-        <meshBasicMaterial
-          color="#4488ff"
-          transparent
-          opacity={0.08}
-          side={THREE.BackSide}
-        />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[5.3, 64, 64]} />
-        <meshBasicMaterial
-          color="#4488ff"
-          transparent
-          opacity={0.04}
-          side={THREE.BackSide}
-        />
-      </mesh>
-    </group>
-  );
-}
-
 function SceneLighting() {
   return (
     <>
-      <ambientLight intensity={0.15} />
-      <directionalLight position={[5, 3, 5]} intensity={1.2} color="#fff5e6" />
-      <pointLight position={[-5, -2, 3]} intensity={0.3} color="#3b82f6" />
-      <pointLight position={[0, 3, -2]} intensity={0.2} color="#06b6d4" />
+      {/* Ambient base */}
+      <ambientLight intensity={0.08} />
+      {/* Main sun directional */}
+      <directionalLight position={[5, 3, 4]} intensity={1.5} color="#fff8f0" />
+      {/* Rim light (back) — accent colored for drama */}
+      <pointLight position={[-4, -1, -4]} intensity={0.4} color="#FF3D00" />
+      {/* Fill light */}
+      <pointLight position={[0, 4, 2]} intensity={0.15} color="#ffffff" />
+      {/* Bottom bounce */}
+      <pointLight position={[0, -3, 0]} intensity={0.05} color="#0066CC" />
     </>
   );
 }
@@ -233,23 +229,15 @@ export function SatelliteScene() {
   return (
     <div className="absolute inset-0">
       <Canvas
-        camera={{ position: [0, 0, 7], fov: 50 }}
-        gl={{ antialias: true, alpha: true }}
-        dpr={[1, 2]}
+        camera={{ position: [0, 0.5, 6], fov: 45 }}
+        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        dpr={[1, 1.5]}
       >
         <Suspense fallback={null}>
           <SceneLighting />
           <Satellite />
-          <Earth />
-          <Stars
-            radius={100}
-            depth={60}
-            count={4000}
-            factor={4}
-            saturation={0.2}
-            fade
-            speed={0.5}
-          />
+          {/* No Stars — avoiding the starfield cliché */}
+          <fog attach="fog" args={['#050505', 15, 30]} />
         </Suspense>
       </Canvas>
     </div>

@@ -5,14 +5,14 @@ import { CursorGlow } from '@/components/shared/cursor-glow';
 import { GrainOverlay } from '@/components/shared/grain-overlay';
 import { Navbar } from '@/components/landing/navbar';
 import { HeroSection } from '@/components/landing/hero-section';
-import { ProblemSection } from '@/components/landing/problem-section';
-import { FeaturesSection } from '@/components/landing/features-section';
-import { HowItWorksSection } from '@/components/landing/how-it-works-section';
+import { TelemetryStrip } from '@/components/landing/telemetry-strip';
+import { EnergyBalanceSection } from '@/components/landing/energy-balance-section';
+import { CapabilitiesSection } from '@/components/landing/capabilities-section';
+import { SpecComparison } from '@/components/landing/spec-comparison';
 import { PricingSection } from '@/components/landing/pricing-section';
-import { ComparisonSection } from '@/components/landing/comparison-section';
-import { TestimonialsSection } from '@/components/landing/testimonials-section';
 import { CtaSection } from '@/components/landing/cta-section';
 import { Footer } from '@/components/landing/footer';
+import { PaletteSwitcher } from '@/components/landing/palette-switcher';
 
 export default function LandingPage() {
   return (
@@ -22,15 +22,15 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <HeroSection />
-        <ProblemSection />
-        <FeaturesSection />
-        <HowItWorksSection />
+        <TelemetryStrip />
+        <EnergyBalanceSection />
+        <CapabilitiesSection />
+        <SpecComparison />
         <PricingSection />
-        <ComparisonSection />
-        <TestimonialsSection />
         <CtaSection />
       </main>
       <Footer />
+      <PaletteSwitcher />
     </LenisProvider>
   );
 }

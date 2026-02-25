@@ -1,47 +1,64 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValueEvent, useScroll } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/shared/logo';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { label: 'Features', href: '#features' },
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Compare', href: '#compare' },
+  { label: 'ANALYSIS', href: '#analysis' },
+  { label: 'CAPABILITIES', href: '#capabilities' },
+  { label: 'SPECS', href: '#specs' },
+  { label: 'PRICING', href: '#pricing' },
 ];
+
+function MissionClock() {
+  const [time, setTime] = useState('--:--:--');
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      setTime(
+        now.toISOString().slice(11, 19)
+      );
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <span className="font-mono text-[11px] tracking-widest" style={{ color: 'var(--tc-text-muted)' }}>
+      <span className="text-accent mr-1">▸</span>
+      UTC {time}
+    </span>
+  );
+}
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { scrollY } = useScroll();
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  useMotionValueEvent(scrollY, 'change', (v) => {
+    setScrolled(v > 60);
+  });
 
   return (
     <>
       <motion.header
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className={cn(
-          'fixed top-4 left-4 right-4 z-40 mx-auto max-w-6xl rounded-2xl transition-all duration-500',
-          scrolled
-            ? 'glass-strong shadow-lg shadow-black/20'
-            : 'bg-transparent',
-        )}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="fixed top-0 left-0 right-0 z-40 transition-all duration-500"
+        style={{
+          backgroundColor: scrolled ? 'var(--tc-base)' : 'transparent',
+          borderBottom: scrolled ? '1px solid var(--tc-border)' : '1px solid transparent',
+        }}
       >
-        <nav className="flex items-center justify-between px-6 py-3">
-          <Link href="/">
+        <nav className="flex items-center justify-between px-6 lg:px-10 py-3 max-w-[1400px] mx-auto">
+          <Link href="/" className="shrink-0">
             <Logo size="sm" />
           </Link>
 
@@ -51,27 +68,42 @@ export function Navbar() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+                className="font-mono text-[11px] tracking-[0.15em] transition-colors duration-200 hover:text-accent"
+                style={{ color: 'var(--tc-text-muted)' }}
               >
                 {link.label}
               </a>
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button variant="glow" size="sm" asChild>
-              <Link href="/signup">Get Started</Link>
-            </Button>
+          <div className="hidden md:flex items-center gap-6">
+            <MissionClock />
+            <div className="w-px h-4" style={{ backgroundColor: 'var(--tc-border)' }} />
+            <Link
+              href="/login"
+              className="font-mono text-[11px] tracking-[0.15em] transition-colors duration-200 hover:text-accent"
+              style={{ color: 'var(--tc-text-secondary)' }}
+            >
+              LOG IN
+            </Link>
+            <Link
+              href="/signup"
+              className="font-mono text-[11px] tracking-[0.15em] px-4 py-2 transition-all duration-200 hover:shadow-[0_0_20px_rgba(var(--tc-accent-rgb),0.3)]"
+              style={{
+                backgroundColor: 'var(--tc-accent)',
+                color: '#fff',
+              }}
+            >
+              ACCESS CONSOLE →
+            </Link>
           </div>
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 text-foreground"
+            className="md:hidden p-2"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
+            style={{ color: 'var(--tc-text)' }}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -86,26 +118,36 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-x-4 top-20 z-40 glass-strong rounded-2xl p-6 md:hidden"
+            className="fixed inset-x-0 top-[52px] z-40 p-4 md:hidden"
+            style={{ backgroundColor: 'var(--tc-surface)', borderBottom: '1px solid var(--tc-border)' }}
           >
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
-                  className="text-lg text-muted-foreground hover:text-foreground transition-colors"
+                  className="font-mono text-xs tracking-[0.15em] py-3 px-4 transition-colors hover:text-accent"
+                  style={{ color: 'var(--tc-text-muted)' }}
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
                 </a>
               ))}
-              <div className="pt-4 border-t border-white/10 flex flex-col gap-2">
-                <Button variant="ghost" asChild>
-                  <Link href="/login">Log in</Link>
-                </Button>
-                <Button variant="glow" asChild>
-                  <Link href="/signup">Get Started Free</Link>
-                </Button>
+              <div className="mt-4 pt-4 flex flex-col gap-2" style={{ borderTop: '1px solid var(--tc-border)' }}>
+                <Link
+                  href="/login"
+                  className="font-mono text-xs tracking-[0.15em] py-3 px-4"
+                  style={{ color: 'var(--tc-text-secondary)' }}
+                >
+                  LOG IN
+                </Link>
+                <Link
+                  href="/signup"
+                  className="font-mono text-xs tracking-[0.15em] py-3 px-4 text-center"
+                  style={{ backgroundColor: 'var(--tc-accent)', color: '#fff' }}
+                >
+                  ACCESS CONSOLE →
+                </Link>
               </div>
             </div>
           </motion.div>

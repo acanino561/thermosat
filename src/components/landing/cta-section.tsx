@@ -1,60 +1,110 @@
 'use client';
 
-import { motion, useInView } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Rocket } from 'lucide-react';
 import Link from 'next/link';
 
 export function CtaSection() {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start end', 'end start'],
+  });
+  const gridY = useTransform(scrollYProgress, [0, 1], [30, -30]);
 
   return (
-    <section className="relative py-32 px-4" ref={ref}>
-      <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="relative glass rounded-3xl p-12 md:p-16 text-center overflow-hidden"
-        >
-          {/* Gradient background accent */}
-          <div className="absolute inset-0 bg-gradient-to-br from-accent-blue/10 via-transparent to-accent-orange/10" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-accent-blue/10 rounded-full blur-3xl" />
+    <section
+      ref={sectionRef}
+      className="relative py-24 lg:py-32 px-6 lg:px-10 overflow-hidden"
+      style={{ borderTop: '1px solid var(--tc-border)' }}
+    >
+      {/* Parallax grid */}
+      <motion.div
+        style={{ y: gridY }}
+        className="absolute inset-0 eng-grid pointer-events-none opacity-40"
+        aria-hidden
+      />
 
-          <div className="relative z-10">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={isInView ? { scale: 1 } : {}}
-              transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-              className="inline-flex p-4 rounded-2xl bg-accent-blue/10 mb-6"
-            >
-              <Rocket className="h-8 w-8 text-accent-blue" />
-            </motion.div>
+      <div className="relative z-10 max-w-[1400px] mx-auto">
+        <div className="max-w-3xl">
+          {/* Terminal prompt */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="font-mono text-sm mb-12 p-6"
+            style={{
+              backgroundColor: 'var(--tc-surface)',
+              border: '1px solid var(--tc-border)',
+            }}
+          >
+            <div className="flex items-center gap-3 mb-4 pb-3" style={{ borderBottom: '1px solid var(--tc-border)' }}>
+              <span className="data-label">TERMINAL</span>
+              <span className="font-mono text-[9px]" style={{ color: 'var(--tc-text-dim)' }}>thermosat-cli v2.1.0</span>
+            </div>
+            <div style={{ color: 'var(--tc-text-muted)' }}>
+              <span className="text-accent">$</span>{' '}
+              <span style={{ color: 'var(--tc-text-secondary)' }}>thermosat init</span>{' '}
+              --orbit LEO --altitude 408 --inclination 51.64
+            </div>
+            <div className="mt-1" style={{ color: 'var(--tc-text-muted)' }}>
+              <span className="text-accent">$</span>{' '}
+              <span style={{ color: 'var(--tc-text-secondary)' }}>thermosat run</span>{' '}
+              --type transient --duration 5400 --timestep adaptive
+            </div>
+            <div className="mt-1" style={{ color: 'var(--tc-text-muted)' }}>
+              <span className="text-accent">$</span>{' '}
+              <span style={{ color: 'var(--tc-text-secondary)' }}>thermosat export</span>{' '}
+              --format csv --nodes all
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="status-dot" />
+              <span style={{ color: 'var(--tc-text-muted)' }}>
+                Analysis complete. 147 nodes solved. Max temp: 142.3°C (SOLAR_PANEL_PY)
+              </span>
+            </div>
+          </motion.div>
 
-            <h2 className="font-heading text-4xl md:text-5xl font-bold mb-4">
-              Start simulating in{' '}
-              <span className="text-gradient">minutes</span>
+          {/* CTA content */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <h2 className="font-mono font-bold text-display-lg tracking-tight" style={{ color: 'var(--tc-text)' }}>
+              Start simulating
+              <br />
+              <span className="text-accent">in minutes</span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
-              No credit card required. No installs. Create your first thermal model
-              in under 5 minutes.
+            <p
+              className="mt-4 max-w-lg text-base leading-relaxed font-sans"
+              style={{ color: 'var(--tc-text-secondary)' }}
+            >
+              No credit card. No install. Create your first thermal model, configure 
+              orbital parameters, and run your first analysis — all in under 5 minutes.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button variant="glow" size="xl" asChild>
-                <Link href="/signup" className="gap-2">
-                  Create Free Account
-                  <ArrowRight className="h-5 w-5" />
-                </Link>
-              </Button>
-              <Button variant="ghost" size="xl" asChild>
-                <Link href="#features">Explore Features</Link>
-              </Button>
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-8 py-4 transition-all duration-200 hover:shadow-[0_0_30px_rgba(var(--tc-accent-rgb),0.3)]"
+                style={{ backgroundColor: 'var(--tc-accent)', color: '#fff' }}
+              >
+                CREATE FREE ACCOUNT
+                <span>→</span>
+              </Link>
+              <Link
+                href="#analysis"
+                className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-8 py-4 transition-colors duration-200 hover:text-accent"
+                style={{ color: 'var(--tc-text-secondary)', border: '1px solid var(--tc-border)' }}
+              >
+                EXPLORE CAPABILITIES
+              </Link>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

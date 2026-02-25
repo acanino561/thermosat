@@ -43,12 +43,27 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        'space-base': '#0a0a14',
-        'space-surface': '#111122',
-        'space-elevated': '#1a1a2e',
-        'accent-blue': '#3b82f6',
-        'accent-cyan': '#06b6d4',
-        'accent-orange': '#f97316',
+        // Theme-adaptive colors
+        tc: {
+          base: 'var(--tc-base)',
+          surface: 'var(--tc-surface)',
+          elevated: 'var(--tc-elevated)',
+          accent: 'var(--tc-accent)',
+          'accent-dim': 'var(--tc-accent-dim)',
+          text: 'var(--tc-text)',
+          'text-secondary': 'var(--tc-text-secondary)',
+          'text-muted': 'var(--tc-text-muted)',
+          'text-dim': 'var(--tc-text-dim)',
+          border: 'var(--tc-border)',
+          'border-subtle': 'var(--tc-border-subtle)',
+        },
+        // Legacy compat for dashboard
+        'space-base': 'var(--tc-base)',
+        'space-surface': 'var(--tc-surface)',
+        'space-elevated': 'var(--tc-elevated)',
+        'accent-blue': 'var(--tc-accent)',
+        'accent-cyan': 'var(--tc-accent)',
+        'accent-orange': 'var(--tc-accent)',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -56,9 +71,14 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['var(--font-inter)'],
-        heading: ['var(--font-space-grotesk)'],
-        mono: ['var(--font-jetbrains-mono)'],
+        sans: ['var(--font-plex-sans)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-plex-mono)', 'monospace'],
+        heading: ['var(--font-plex-mono)', 'monospace'],
+      },
+      fontSize: {
+        'display-xl': ['clamp(3.5rem, 8vw, 7rem)', { lineHeight: '0.95', letterSpacing: '-0.03em', fontWeight: '700' }],
+        'display-lg': ['clamp(2.5rem, 5vw, 4.5rem)', { lineHeight: '1', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'display': ['clamp(2rem, 4vw, 3.5rem)', { lineHeight: '1.05', letterSpacing: '-0.02em', fontWeight: '600' }],
       },
       keyframes: {
         'accordion-down': {
@@ -69,29 +89,10 @@ const config: Config = {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
-        shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        },
-        pulse: {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.5' },
-        },
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-10px)' },
-        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        shimmer: 'shimmer 2s linear infinite',
-        pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        float: 'float 3s ease-in-out infinite',
-      },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
     },
   },

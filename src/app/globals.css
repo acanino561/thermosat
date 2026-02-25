@@ -2,28 +2,173 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════
+   THERMOSAT — THEME SYSTEM
+   4 palettes: Mission Control, Thermal IR, Cryogenic, Clean Room
+   Applied via data-theme attribute on <html>
+   ═══════════════════════════════════════════════════ */
+
 @layer base {
-  :root {
-    --background: 240 10% 4%;
-    --foreground: 210 40% 98%;
-    --card: 240 10% 6%;
-    --card-foreground: 210 40% 98%;
-    --popover: 240 10% 6%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 240 4% 16%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 240 4% 16%;
-    --accent-foreground: 210 40% 98%;
+  /* ── Mission Control (default) ── */
+  :root,
+  html[data-theme="mission-control"] {
+    --tc-base: #050505;
+    --tc-surface: #0A0A0A;
+    --tc-elevated: #111111;
+    --tc-accent: #FF3D00;
+    --tc-accent-rgb: 255, 61, 0;
+    --tc-accent-dim: #CC3100;
+    --tc-text: #E8E8E8;
+    --tc-text-secondary: #999999;
+    --tc-text-muted: #555555;
+    --tc-text-dim: #2A2A2A;
+    --tc-border: #1A1A1A;
+    --tc-border-subtle: #111111;
+    --tc-grid-color: rgba(255, 61, 0, 0.035);
+    --tc-grid-color-strong: rgba(255, 61, 0, 0.06);
+    --tc-noise-opacity: 0.025;
+
+    /* shadcn compat */
+    --background: 0 0% 2%;
+    --foreground: 0 0% 91%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 91%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 91%;
+    --primary: 14 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 7%;
+    --secondary-foreground: 0 0% 91%;
+    --muted: 0 0% 7%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 7%;
+    --accent-foreground: 0 0% 91%;
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 217 91% 60%;
-    --radius: 0.75rem;
+    --destructive-foreground: 0 0% 91%;
+    --border: 0 0% 10%;
+    --input: 0 0% 10%;
+    --ring: 14 100% 50%;
+    --radius: 0.5rem;
+  }
+
+  /* ── Thermal IR ── */
+  html[data-theme="thermal-ir"] {
+    --tc-base: #080303;
+    --tc-surface: #100606;
+    --tc-elevated: #1A0A0A;
+    --tc-accent: #FF6B00;
+    --tc-accent-rgb: 255, 107, 0;
+    --tc-accent-dim: #CC5600;
+    --tc-text: #F0D0B0;
+    --tc-text-secondary: #B08060;
+    --tc-text-muted: #6B4030;
+    --tc-text-dim: #3A1A10;
+    --tc-border: #2A1210;
+    --tc-border-subtle: #1A0A08;
+    --tc-grid-color: rgba(255, 107, 0, 0.03);
+    --tc-grid-color-strong: rgba(255, 107, 0, 0.06);
+    --tc-noise-opacity: 0.03;
+
+    --background: 0 45% 2%;
+    --foreground: 25 60% 82%;
+    --card: 0 45% 3%;
+    --card-foreground: 25 60% 82%;
+    --popover: 0 45% 3%;
+    --popover-foreground: 25 60% 82%;
+    --primary: 25 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 25% 10%;
+    --secondary-foreground: 25 60% 82%;
+    --muted: 0 25% 10%;
+    --muted-foreground: 20 30% 40%;
+    --accent: 0 25% 10%;
+    --accent-foreground: 25 60% 82%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 25 60% 82%;
+    --border: 0 35% 12%;
+    --input: 0 35% 12%;
+    --ring: 25 100% 50%;
+    --radius: 0.5rem;
+  }
+
+  /* ── Cryogenic ── */
+  html[data-theme="cryogenic"] {
+    --tc-base: #020810;
+    --tc-surface: #040D1A;
+    --tc-elevated: #081828;
+    --tc-accent: #00E5FF;
+    --tc-accent-rgb: 0, 229, 255;
+    --tc-accent-dim: #00B8CC;
+    --tc-text: #D0E8F0;
+    --tc-text-secondary: #6090A8;
+    --tc-text-muted: #304858;
+    --tc-text-dim: #152028;
+    --tc-border: #0A2030;
+    --tc-border-subtle: #061420;
+    --tc-grid-color: rgba(0, 229, 255, 0.025);
+    --tc-grid-color-strong: rgba(0, 229, 255, 0.05);
+    --tc-noise-opacity: 0.02;
+
+    --background: 215 78% 4%;
+    --foreground: 198 50% 88%;
+    --card: 210 63% 6%;
+    --card-foreground: 198 50% 88%;
+    --popover: 210 63% 6%;
+    --popover-foreground: 198 50% 88%;
+    --primary: 187 100% 50%;
+    --primary-foreground: 215 78% 4%;
+    --secondary: 210 30% 12%;
+    --secondary-foreground: 198 50% 88%;
+    --muted: 210 30% 12%;
+    --muted-foreground: 200 25% 40%;
+    --accent: 210 30% 12%;
+    --accent-foreground: 198 50% 88%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 198 50% 88%;
+    --border: 210 40% 12%;
+    --input: 210 40% 12%;
+    --ring: 187 100% 50%;
+    --radius: 0.5rem;
+  }
+
+  /* ── Clean Room (light theme) ── */
+  html[data-theme="clean-room"] {
+    --tc-base: #F8F8F8;
+    --tc-surface: #FFFFFF;
+    --tc-elevated: #F0F0F0;
+    --tc-accent: #FF3D00;
+    --tc-accent-rgb: 255, 61, 0;
+    --tc-accent-dim: #CC3100;
+    --tc-text: #0A0A0A;
+    --tc-text-secondary: #444444;
+    --tc-text-muted: #888888;
+    --tc-text-dim: #CCCCCC;
+    --tc-border: #E0E0E0;
+    --tc-border-subtle: #EEEEEE;
+    --tc-grid-color: rgba(0, 0, 0, 0.04);
+    --tc-grid-color-strong: rgba(0, 0, 0, 0.07);
+    --tc-noise-opacity: 0.015;
+
+    --background: 0 0% 97%;
+    --foreground: 0 0% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 4%;
+    --primary: 14 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 4%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 4%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 14 100% 50%;
+    --radius: 0.5rem;
   }
 }
 
@@ -32,71 +177,172 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-space-base text-foreground antialiased;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+  html {
+    transition: background-color 0.6s ease, color 0.6s ease;
+    scroll-behavior: smooth;
   }
 
-  /* Custom scrollbar for dark theme */
+  body {
+    background-color: var(--tc-base);
+    color: var(--tc-text);
+    font-feature-settings: 'rlig' 1, 'calt' 1, 'tnum' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: rgba(var(--tc-accent-rgb), 0.3);
+    color: var(--tc-text);
+  }
+
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 4px;
+    height: 4px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0a0a14;
+    background: var(--tc-base);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #2a2a3e;
-    border-radius: 4px;
+    background: var(--tc-border);
+    border-radius: 2px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #3b82f6;
+    background: var(--tc-accent);
   }
 }
 
 @layer utilities {
-  .glass {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  /* ── Engineering Grid Background ── */
+  .eng-grid {
+    background-image:
+      linear-gradient(var(--tc-grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--tc-grid-color) 1px, transparent 1px);
+    background-size: 40px 40px;
   }
 
-  .glass-strong {
-    @apply bg-white/10 backdrop-blur-2xl border border-white/15;
+  .eng-grid-dense {
+    background-image:
+      linear-gradient(var(--tc-grid-color-strong) 1px, transparent 1px),
+      linear-gradient(90deg, var(--tc-grid-color-strong) 1px, transparent 1px),
+      linear-gradient(var(--tc-grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--tc-grid-color) 1px, transparent 1px);
+    background-size: 200px 200px, 200px 200px, 40px 40px, 40px 40px;
   }
 
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-blue to-accent-cyan;
+  /* ── Accent utilities ── */
+  .text-accent {
+    color: var(--tc-accent);
   }
 
-  .text-gradient-warm {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-orange to-amber-400;
+  .bg-accent-fill {
+    background-color: var(--tc-accent);
   }
 
-  .glow-blue {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 60px rgba(59, 130, 246, 0.1);
+  .border-accent {
+    border-color: var(--tc-accent);
   }
 
-  .glow-cyan {
-    box-shadow: 0 0 20px rgba(6, 182, 212, 0.3), 0 0 60px rgba(6, 182, 212, 0.1);
+  .accent-glow {
+    box-shadow: 0 0 20px rgba(var(--tc-accent-rgb), 0.25),
+                0 0 60px rgba(var(--tc-accent-rgb), 0.08);
   }
 
-  .glow-orange {
-    box-shadow: 0 0 20px rgba(249, 115, 22, 0.3), 0 0 60px rgba(249, 115, 22, 0.1);
+  .accent-glow-sm {
+    box-shadow: 0 0 10px rgba(var(--tc-accent-rgb), 0.2);
   }
 
-  .noise-overlay {
-    position: relative;
+  .accent-glow-lg {
+    box-shadow: 0 0 40px rgba(var(--tc-accent-rgb), 0.3),
+                0 0 120px rgba(var(--tc-accent-rgb), 0.1);
   }
 
-  .noise-overlay::after {
+  /* ── Surface styles ── */
+  .surface {
+    background-color: var(--tc-surface);
+    border: 1px solid var(--tc-border);
+  }
+
+  .surface-elevated {
+    background-color: var(--tc-elevated);
+    border: 1px solid var(--tc-border);
+  }
+
+  /* ── Telemetry readout style ── */
+  .readout {
+    font-family: var(--font-plex-mono), monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Horizontal rule with accent ── */
+  .rule-accent {
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(var(--tc-accent-rgb), 0.4),
+      transparent
+    );
+  }
+
+  /* ── Data label style ── */
+  .data-label {
+    font-family: var(--font-plex-mono), monospace;
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--tc-text-muted);
+  }
+
+  /* ── Scan line effect ── */
+  .scanline::after {
     content: '';
     position: absolute;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(var(--tc-accent-rgb), 0.01) 2px,
+      rgba(var(--tc-accent-rgb), 0.01) 4px
+    );
     pointer-events: none;
-    z-index: 1;
-    opacity: 0.4;
+  }
+
+  /* ── Blinking cursor ── */
+  .cursor-blink::after {
+    content: '█';
+    animation: blink 1s step-end infinite;
+    color: var(--tc-accent);
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* ── Status dot ── */
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--tc-accent);
+    box-shadow: 0 0 6px rgba(var(--tc-accent-rgb), 0.6);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(var(--tc-accent-rgb), 0.6); }
+    50% { opacity: 0.6; box-shadow: 0 0 12px rgba(var(--tc-accent-rgb), 0.3); }
+  }
+
+  /* ── Counter animation ── */
+  @property --num {
+    syntax: '<integer>';
+    initial-value: 0;
+    inherits: false;
   }
 }
