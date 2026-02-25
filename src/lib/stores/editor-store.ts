@@ -100,7 +100,7 @@ interface EditorState {
   selectedHeatLoadId: string | null;
   showResultsOverlay: boolean;
   isDirty: boolean;
-  activeView: '3d' | 'network';
+  activeView: '3d' | 'network' | 'results';
 
   // History
   history: EditorSnapshot[];
@@ -132,7 +132,7 @@ interface EditorState {
   clearSelection: () => void;
 
   setShowResultsOverlay: (show: boolean) => void;
-  setActiveView: (view: '3d' | 'network') => void;
+  setActiveView: (view: '3d' | 'network' | 'results') => void;
 
   undo: () => void;
   redo: () => void;

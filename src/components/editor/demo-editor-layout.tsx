@@ -5,13 +5,14 @@ import { Toolbar } from './toolbar';
 import { TreePanel } from './tree-panel';
 import { NetworkGraph } from './network-graph';
 import { PropertiesPanel } from './properties-panel';
+import { TimelineScrubber } from './timeline-scrubber';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
-import { Box, Network, Rocket } from 'lucide-react';
+import { Box, Network, Rocket, BarChart3 } from 'lucide-react';
 
-// Dynamic import — R3F/Three.js should never SSR
-const Viewport3D = dynamic(
-  () => import('./viewport-3d').then((m) => m.Viewport3D),
+// Dynamic imports — R3F/Three.js and heavy charts should never SSR
+const DemoViewport3D = dynamic(
+  () => import('./demo-viewport-3d').then((m) => m.DemoViewport3D),
   {
     ssr: false,
     loading: () => (
@@ -25,9 +26,25 @@ const Viewport3D = dynamic(
   },
 );
 
+const DemoResultsPanel = dynamic(
+  () => import('@/components/results/demo-results-panel').then((m) => m.DemoResultsPanel),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full flex items-center justify-center bg-[#030810]">
+        <div className="text-center">
+          <div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-3" />
+          <div className="text-xs font-mono text-muted-foreground/50">Loading results…</div>
+        </div>
+      </div>
+    ),
+  },
+);
+
 /**
- * Demo variant of EditorLayout — no auth, no API calls, no projectId/modelId props.
+ * Demo variant of EditorLayout — no auth, no API calls.
  * Reads everything from the Zustand store which is pre-seeded by the demo page.
+ * Includes 3D CubeSat model, Results panel, and Timeline scrubber.
  */
 export function DemoEditorLayout() {
   const modelName = useEditorStore((s) => s.modelName);
@@ -55,7 +72,7 @@ export function DemoEditorLayout() {
         </span>
         <div className="flex-1" />
         <span className="text-[10px] font-mono text-slate-600">
-          Sample data · No auth required
+          Pre-computed simulation · 400km LEO · 3 orbits
         </span>
       </div>
 
@@ -68,7 +85,7 @@ export function DemoEditorLayout() {
           <TreePanel />
         </div>
 
-        {/* Center — Viewport with tabs */}
+        {/* Center — Viewport with tabs + timeline */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Tab bar */}
           <div
@@ -91,12 +108,23 @@ export function DemoEditorLayout() {
               icon={<Network className="w-3 h-3" />}
               label="Network Graph"
             />
+            <ViewTab
+              active={activeView === 'results'}
+              onClick={() => setActiveView('results')}
+              icon={<BarChart3 className="w-3 h-3" />}
+              label="Results"
+            />
           </div>
 
           {/* Active view */}
           <div className="flex-1 min-h-0">
-            {activeView === '3d' ? <Viewport3D /> : <NetworkGraph />}
+            {activeView === '3d' && <DemoViewport3D />}
+            {activeView === 'network' && <NetworkGraph />}
+            {activeView === 'results' && <DemoResultsPanel />}
           </div>
+
+          {/* Timeline scrubber — always visible */}
+          <TimelineScrubber />
         </div>
 
         {/* Right panel — Properties */}

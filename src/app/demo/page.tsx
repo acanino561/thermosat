@@ -2,10 +2,18 @@
 
 import { useEffect, useRef } from 'react';
 import { useEditorStore } from '@/lib/stores/editor-store';
+import { useTimelineStore } from '@/lib/stores/timeline-store';
 import { DemoEditorLayout } from '@/components/editor/demo-editor-layout';
+import {
+  nodeProfiles,
+  conductorFlows,
+  simulationTimes,
+  energyBalance,
+} from '@/lib/demo/simulation-data';
 
 /**
- * Demo page — loads a 6U CubeSat thermal model with sample data.
+ * Demo page — loads a 6U CubeSat thermal model with sample data
+ * and pre-computed simulation results.
  * No auth required. Uses the same editor components as the real editor.
  */
 
@@ -15,16 +23,10 @@ function generateId(): string {
 
 function useSeedDemoData() {
   const seeded = useRef(false);
-  const addNode = useEditorStore((s) => s.addNode);
-  const addConductor = useEditorStore((s) => s.addConductor);
-  const addHeatLoad = useEditorStore((s) => s.addHeatLoad);
 
   useEffect(() => {
     if (seeded.current) return;
     seeded.current = true;
-
-    // Reset store state for demo
-    const store = useEditorStore.getState();
 
     // Generate IDs upfront so we can reference them in conductors
     const pxId = generateId();
@@ -34,6 +36,19 @@ function useSeedDemoData() {
     const battId = generateId();
     const fcId = generateId();
     const dsId = generateId();
+
+    const nodeIds = [pxId, nxId, pyId, nyId, battId, fcId, dsId];
+
+    // Build simulation results in the format the store expects
+    const nodeResults: Record<string, { times: number[]; temperatures: number[] }> = {};
+    nodeIds.forEach((id, idx) => {
+      nodeResults[id] = {
+        times: simulationTimes,
+        temperatures: nodeProfiles[idx].temperatures,
+      };
+    });
+
+    const conductorFlowResults: Record<string, { times: number[]; flows: number[] }> = {};
 
     // Directly set the store state with all data at once
     useEditorStore.setState({
@@ -194,7 +209,7 @@ function useSeedDemoData() {
         },
       ],
       orbitalConfig: {
-        altitude: 500,
+        altitude: 400,
         inclination: 51.6,
         raan: 0,
         epoch: '2025-01-01T00:00:00Z',
@@ -203,14 +218,25 @@ function useSeedDemoData() {
       selectedNodeId: null,
       selectedConductorId: null,
       selectedHeatLoadId: null,
-      showResultsOverlay: false,
+      showResultsOverlay: true,
       activeView: '3d',
       history: [],
       historyIndex: -1,
-      simulationStatus: 'idle',
-      simulationResults: null,
+      simulationStatus: 'completed',
+      simulationResults: {
+        runId: 'demo-precomputed',
+        status: 'completed',
+        nodeResults,
+        conductorFlows: conductorFlowResults,
+        energyBalanceError: energyBalance.balanceError,
+      },
     });
-  }, [addNode, addConductor, addHeatLoad]);
+
+    // Start timeline playing automatically after a short delay
+    setTimeout(() => {
+      useTimelineStore.getState().setPlaying(true);
+    }, 1500);
+  }, []);
 }
 
 export default function DemoPage() {
