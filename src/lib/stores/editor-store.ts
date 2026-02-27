@@ -223,11 +223,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         }),
       );
 
-      const safeCondcutors = Array.isArray(conductors) ? conductors : [];
+      const safeConductors = Array.isArray(conductors) ? conductors : [];
       const safeHeatLoads = Array.isArray(heatLoads) ? heatLoads : [];
 
       const initialEntry: HistoryEntry = {
-        snapshot: { nodes: structuredClone(positionedNodes), conductors: structuredClone(safeCondcutors), heatLoads: structuredClone(safeHeatLoads) },
+        snapshot: { nodes: structuredClone(positionedNodes), conductors: structuredClone(safeConductors), heatLoads: structuredClone(safeHeatLoads) },
         description: 'Model loaded',
         timestamp: Date.now(),
       };
@@ -237,7 +237,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         modelId,
         modelName: model.name || 'Untitled Model',
         nodes: positionedNodes,
-        conductors: safeCondcutors,
+        conductors: safeConductors,
         heatLoads: safeHeatLoads,
         orbitalConfig: model.orbitalConfig || null,
         isDirty: false,
