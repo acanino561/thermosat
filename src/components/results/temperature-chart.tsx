@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useUnits } from '@/lib/hooks/use-units';
 
 const COLORS = ['#3b82f6', '#06b6d4', '#f97316', '#22c55e', '#a855f7', '#ef4444', '#eab308', '#ec4899'];
 
@@ -19,7 +20,9 @@ interface TemperatureChartProps {
 }
 
 export function TemperatureChart({ nodeResults, nodeNames }: TemperatureChartProps) {
-  // Transform data for Recharts
+  const { label, display } = useUnits();
+  const tempLabel = label('Temperature');
+
   const nodeIds = Object.keys(nodeResults);
   if (nodeIds.length === 0) return null;
 
@@ -27,7 +30,7 @@ export function TemperatureChart({ nodeResults, nodeNames }: TemperatureChartPro
   const data = timeSteps.map((time, i) => {
     const point: Record<string, number> = { time };
     nodeIds.forEach((nodeId) => {
-      point[nodeId] = nodeResults[nodeId].temperatures[i];
+      point[nodeId] = display(nodeResults[nodeId].temperatures[i], 'Temperature');
     });
     return point;
   });
@@ -49,7 +52,7 @@ export function TemperatureChart({ nodeResults, nodeNames }: TemperatureChartPro
             <YAxis
               tick={{ fill: '#94a3b8', fontSize: 11 }}
               stroke="rgba(255,255,255,0.1)"
-              label={{ value: 'Temperature (K)', angle: -90, position: 'left', fill: '#94a3b8', fontSize: 12 }}
+              label={{ value: `Temperature (${tempLabel})`, angle: -90, position: 'left', fill: '#94a3b8', fontSize: 12 }}
             />
             <Tooltip
               contentStyle={{
@@ -60,10 +63,10 @@ export function TemperatureChart({ nodeResults, nodeNames }: TemperatureChartPro
                 fontSize: 12,
               }}
               formatter={((value: number | undefined, name: string | undefined) => [
-                `${(value ?? 0).toFixed(2)} K`,
+                `${(value ?? 0).toFixed(2)} ${tempLabel}`,
                 nodeNames[name ?? ''] || name || '',
               ]) as any}
-              labelFormatter={((label: any) => `t = ${(Number(label) / 60).toFixed(1)} min`) as any}
+              labelFormatter={((l: any) => `t = ${(Number(l) / 60).toFixed(1)} min`) as any}
             />
             <Legend
               formatter={(value: string) => nodeNames[value] || value}

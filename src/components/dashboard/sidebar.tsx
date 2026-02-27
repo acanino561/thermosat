@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { UnitsToggle } from './units-toggle';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -107,6 +108,14 @@ export function Sidebar() {
           return link;
         })}
       </nav>
+
+      {/* Units toggle */}
+      {!collapsed && (
+        <div className="px-3 pb-2">
+          <Separator className="bg-white/10 mb-3" />
+          <UnitsToggle />
+        </div>
+      )}
 
       {/* User section */}
       <div className="px-3 pb-4">

@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useUnits } from '@/lib/hooks/use-units';
 
 const COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#06b6d4', '#ef4444'];
 
@@ -19,6 +20,9 @@ interface HeatFlowChartProps {
 }
 
 export function HeatFlowChart({ conductorFlows, conductorNames }: HeatFlowChartProps) {
+  const { label, display } = useUnits();
+  const powerLabel = label('Power');
+
   const condIds = Object.keys(conductorFlows);
   if (condIds.length === 0) return null;
 
@@ -26,7 +30,7 @@ export function HeatFlowChart({ conductorFlows, conductorNames }: HeatFlowChartP
   const data = timeSteps.map((time, i) => {
     const point: Record<string, number> = { time };
     condIds.forEach((condId) => {
-      point[condId] = conductorFlows[condId].flows[i];
+      point[condId] = display(conductorFlows[condId].flows[i], 'Power');
     });
     return point;
   });
@@ -47,7 +51,7 @@ export function HeatFlowChart({ conductorFlows, conductorNames }: HeatFlowChartP
             <YAxis
               tick={{ fill: '#94a3b8', fontSize: 11 }}
               stroke="rgba(255,255,255,0.1)"
-              label={{ value: 'Heat Flow (W)', angle: -90, position: 'left', fill: '#94a3b8', fontSize: 12 }}
+              label={{ value: `Heat Flow (${powerLabel})`, angle: -90, position: 'left', fill: '#94a3b8', fontSize: 12 }}
             />
             <Tooltip
               contentStyle={{
@@ -58,7 +62,7 @@ export function HeatFlowChart({ conductorFlows, conductorNames }: HeatFlowChartP
                 fontSize: 12,
               }}
               formatter={((value: number | undefined, name: string | undefined) => [
-                `${(value ?? 0).toFixed(3)} W`,
+                `${(value ?? 0).toFixed(3)} ${powerLabel}`,
                 conductorNames[name ?? ''] || name || '',
               ]) as any}
             />
