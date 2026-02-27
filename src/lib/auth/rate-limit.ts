@@ -27,7 +27,6 @@ export function checkRateLimit(ip: string): { allowed: boolean; retryAfterMs: nu
   const entry = store.get(ip);
 
   if (!entry || now > entry.resetAt) {
-    store.set(ip, { count: 1, resetAt: now + WINDOW_MS });
     return { allowed: true, retryAfterMs: 0 };
   }
 
@@ -35,7 +34,6 @@ export function checkRateLimit(ip: string): { allowed: boolean; retryAfterMs: nu
     return { allowed: false, retryAfterMs: entry.resetAt - now };
   }
 
-  entry.count++;
   return { allowed: true, retryAfterMs: 0 };
 }
 

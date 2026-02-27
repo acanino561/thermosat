@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { db } from '@/lib/db/client';
 import { users, accounts, projects, thermalModels, simulationRuns } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 /** GDPR data export — returns all personal data as JSON. */
 export async function GET() {
@@ -18,22 +18,27 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const userAccounts = await db.select().from(accounts).where(eq(accounts.userId, user.id));
-    const userProjects = await db.select().from(projects).where(eq(projects.userId, user.id));
+    const [userAccounts, userProjects] = await Promise.all([
+      db.select().from(accounts).where(eq(accounts.userId, user.id)),
+      db.select().from(projects).where(eq(projects.userId, user.id)),
+    ]);
 
     const projectIds = userProjects.map((p) => p.id);
     let models: unknown[] = [];
     let simulations: unknown[] = [];
 
     if (projectIds.length > 0) {
-      // Fetch models for each project
-      for (const pid of projectIds) {
-        const m = await db.select().from(thermalModels).where(eq(thermalModels.projectId, pid));
-        models.push(...m);
-        for (const model of m) {
-          const s = await db.select().from(simulationRuns).where(eq(simulationRuns.modelId, model.id));
-          simulations.push(...s);
-        }
+      models = await db
+        .select()
+        .from(thermalModels)
+        .where(inArray(thermalModels.projectId, projectIds));
+
+      const modelIds = (models as { id: string }[]).map((m) => m.id);
+      if (modelIds.length > 0) {
+        simulations = await db
+          .select()
+          .from(simulationRuns)
+          .where(inArray(simulationRuns.modelId, modelIds));
       }
     }
 

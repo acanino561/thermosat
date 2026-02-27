@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db/client';
-import { users, passwordResetTokens } from '@/lib/db/schema';
+import { users, passwordResetTokens, sessions } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import bcrypt from 'bcryptjs';
@@ -86,6 +86,12 @@ export async function PUT(req: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Get user ID for session invalidation
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email));
+
     await db
       .update(users)
       .set({ password: hashedPassword, updatedAt: new Date() })
@@ -95,6 +101,11 @@ export async function PUT(req: Request) {
     await db
       .delete(passwordResetTokens)
       .where(eq(passwordResetTokens.identifier, email));
+
+    // Invalidate all existing sessions for this user
+    if (user) {
+      await db.delete(sessions).where(eq(sessions.userId, user.id));
+    }
 
     return NextResponse.json({ message: 'Password reset successfully' });
   } catch (error) {

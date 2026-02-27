@@ -29,16 +29,18 @@ export async function POST(req: Request) {
 
     const { name, email, password } = parsed.data;
 
-    // Check if user exists
+    // Check if user exists — return same response regardless to prevent enumeration
     const [existing] = await db
       .select({ id: users.id })
       .from(users)
       .where(eq(users.email, email));
 
     if (existing) {
+      // Silently notify the existing user that someone tried to register with their email
+      sendVerificationEmail(email, '__account_exists__').catch(console.error);
       return NextResponse.json(
-        { error: 'An account with this email already exists' },
-        { status: 409 },
+        { message: 'Account created. Please check your email to verify.' },
+        { status: 201 },
       );
     }
 
