@@ -35,7 +35,7 @@ import { useUnitsStore } from '@/lib/stores/units-store';
 export function AddNodeDialog() {
   const [open, setOpen] = useState(false);
   const addNode = useEditorStore((s) => s.addNode);
-  const { label, parse } = useUnits();
+  const { label, parse, fmt } = useUnits();
   const { unitSystem, tempUnit } = useUnitsStore();
 
   // Default values in display units
@@ -45,13 +45,39 @@ export function AddNodeDialog() {
   const [temperature, setTemperature] = useState(defaultTemp);
   const [capacitance, setCapacitance] = useState('100');
   const [boundaryTemp, setBoundaryTemp] = useState(defaultTemp);
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
+
+  // Min temperature in display units (0 K = absolute zero)
+  const minTempDisplay = toDisplay(0, 'Temperature', unitSystem, tempUnit);
+  const minTempLabel = fmt(0, 'Temperature');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string | null> = {};
+
+    const tempSI = parse(parseFloat(temperature), 'Temperature');
+    if (tempSI < 0) newErrors.temperature = `Must be ≥ ${minTempLabel}`;
+
+    if (nodeType === 'diffusion') {
+      const cap = parseFloat(capacitance);
+      if (isNaN(cap) || cap <= 0) newErrors.capacitance = 'Must be > 0';
+    }
+
+    if (nodeType === 'boundary') {
+      const btSI = parse(parseFloat(boundaryTemp), 'Temperature');
+      if (btSI < 0) newErrors.boundaryTemp = `Must be ≥ ${minTempLabel}`;
+    }
+
+    if (Object.values(newErrors).some(Boolean)) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
     addNode({
       name,
       nodeType,
-      temperature: parse(parseFloat(temperature), 'Temperature'),
+      temperature: tempSI,
       capacitance: nodeType === 'diffusion' ? parseFloat(capacitance) : null,
       boundaryTemp: nodeType === 'boundary' ? parse(parseFloat(boundaryTemp), 'Temperature') : null,
     });
@@ -60,6 +86,9 @@ export function AddNodeDialog() {
     setTemperature(defaultTemp);
     setCapacitance('100');
   };
+
+  const FieldError = ({ field }: { field: string }) =>
+    errors[field] ? <p className="text-xs text-red-400 mt-1">{errors[field]}</p> : null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -113,11 +142,13 @@ export function AddNodeDialog() {
                 id="node-temp"
                 type="number"
                 value={temperature}
-                onChange={(e) => setTemperature(e.target.value)}
+                onChange={(e) => { setTemperature(e.target.value); setErrors((p) => ({ ...p, temperature: null })); }}
                 required
+                min={minTempDisplay}
                 step="0.1"
                 className="bg-white/5"
               />
+              <FieldError field="temperature" />
             </div>
             {nodeType === 'diffusion' && (
               <div className="space-y-2">
@@ -126,12 +157,13 @@ export function AddNodeDialog() {
                   id="node-cap"
                   type="number"
                   value={capacitance}
-                  onChange={(e) => setCapacitance(e.target.value)}
+                  onChange={(e) => { setCapacitance(e.target.value); setErrors((p) => ({ ...p, capacitance: null })); }}
                   required
                   min="0.001"
                   step="0.1"
                   className="bg-white/5"
                 />
+                <FieldError field="capacitance" />
               </div>
             )}
             {nodeType === 'boundary' && (
@@ -141,11 +173,13 @@ export function AddNodeDialog() {
                   id="node-boundary"
                   type="number"
                   value={boundaryTemp}
-                  onChange={(e) => setBoundaryTemp(e.target.value)}
+                  onChange={(e) => { setBoundaryTemp(e.target.value); setErrors((p) => ({ ...p, boundaryTemp: null })); }}
                   required
+                  min={minTempDisplay}
                   step="0.1"
                   className="bg-white/5"
                 />
+                <FieldError field="boundaryTemp" />
               </div>
             )}
           </div>

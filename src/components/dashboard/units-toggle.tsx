@@ -31,17 +31,16 @@ export function UnitsToggle() {
           <SelectItem value="Imperial">Imperial</SelectItem>
         </SelectContent>
       </Select>
-      {unitSystem === 'SI' && (
-        <Select value={tempUnit} onValueChange={(v) => setTempUnit(v as 'K' | 'C' | 'F')}>
-          <SelectTrigger className="h-8 w-[70px] bg-white/5 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="K">K</SelectItem>
-            <SelectItem value="C">°C</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
+      <Select value={tempUnit} onValueChange={(v) => setTempUnit(v as 'K' | 'C' | 'F')}>
+        <SelectTrigger className="h-8 w-[70px] bg-white/5 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="K">K</SelectItem>
+          <SelectItem value="C">°C</SelectItem>
+          <SelectItem value="F">°F</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   );
 }
