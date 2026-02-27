@@ -28,11 +28,13 @@ import {
 import { GitBranch } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import type { Conductor } from '@/lib/stores/editor-store';
+import { useUnits } from '@/lib/hooks/use-units';
 
 export function AddConductorDialog() {
   const [open, setOpen] = useState(false);
   const nodes = useEditorStore((s) => s.nodes);
   const addConductor = useEditorStore((s) => s.addConductor);
+  const { label, parse } = useUnits();
 
   const [name, setName] = useState('');
   const [conductorType, setConductorType] = useState<Conductor['conductorType']>('linear');
@@ -50,8 +52,8 @@ export function AddConductorDialog() {
       conductorType,
       nodeFromId,
       nodeToId,
-      conductance: conductorType !== 'radiation' ? parseFloat(conductance) : null,
-      area: conductorType === 'radiation' ? parseFloat(area) : null,
+      conductance: conductorType !== 'radiation' ? parse(parseFloat(conductance), 'Conductance') : null,
+      area: conductorType === 'radiation' ? parse(parseFloat(area), 'Area') : null,
       viewFactor: conductorType === 'radiation' ? parseFloat(viewFactor) : null,
       emissivity: conductorType === 'radiation' ? parseFloat(emissivity) : null,
     });
@@ -142,7 +144,7 @@ export function AddConductorDialog() {
 
             {conductorType !== 'radiation' && (
               <div className="space-y-2">
-                <Label htmlFor="cond-val">Conductance (W/K)</Label>
+                <Label htmlFor="cond-val">Conductance ({label('Conductance')})</Label>
                 <Input
                   id="cond-val"
                   type="number"
@@ -159,7 +161,7 @@ export function AddConductorDialog() {
             {conductorType === 'radiation' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="rad-area">Area (m²)</Label>
+                  <Label htmlFor="rad-area">Area ({label('Area')})</Label>
                   <Input
                     id="rad-area"
                     type="number"

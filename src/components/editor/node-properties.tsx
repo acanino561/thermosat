@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useEditorStore, type ThermalNode } from '@/lib/stores/editor-store';
+import { useUnits } from '@/lib/hooks/use-units';
 
 interface NodePropertiesProps {
   node: ThermalNode;
@@ -18,9 +19,20 @@ interface NodePropertiesProps {
 
 export function NodeProperties({ node }: NodePropertiesProps) {
   const updateNode = useEditorStore((s) => s.updateNode);
+  const { label, display, parse } = useUnits();
 
   const handleChange = (field: keyof ThermalNode, value: string | number | null) => {
     updateNode(node.id, { [field]: value });
+  };
+
+  /** For unit-aware numeric fields: display converted value, store SI */
+  const handleUnitChange = (field: keyof ThermalNode, quantity: Parameters<typeof parse>[1], raw: string) => {
+    const displayVal = parseFloat(raw);
+    if (isNaN(displayVal)) {
+      handleChange(field, null);
+      return;
+    }
+    handleChange(field, parse(displayVal, quantity));
   };
 
   return (
@@ -70,15 +82,13 @@ export function NodeProperties({ node }: NodePropertiesProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="prop-temp">Temperature (K)</Label>
+        <Label htmlFor="prop-temp">Temperature ({label('Temperature')})</Label>
         <Input
           id="prop-temp"
           type="number"
-          value={node.temperature}
-          onChange={(e) => handleChange('temperature', parseFloat(e.target.value) || 0)}
+          value={parseFloat(display(node.temperature, 'Temperature').toFixed(4))}
+          onChange={(e) => handleUnitChange('temperature', 'Temperature', e.target.value)}
           className="bg-white/5 h-8 text-sm"
-          min="0"
-          max="10000"
           step="0.1"
         />
       </div>
@@ -100,15 +110,13 @@ export function NodeProperties({ node }: NodePropertiesProps) {
 
       {node.nodeType === 'boundary' && (
         <div className="space-y-2">
-          <Label htmlFor="prop-btemp">Boundary Temp (K)</Label>
+          <Label htmlFor="prop-btemp">Boundary Temp ({label('Temperature')})</Label>
           <Input
             id="prop-btemp"
             type="number"
-            value={node.boundaryTemp ?? ''}
-            onChange={(e) => handleChange('boundaryTemp', parseFloat(e.target.value) || null)}
+            value={node.boundaryTemp != null ? parseFloat(display(node.boundaryTemp, 'Temperature').toFixed(4)) : ''}
+            onChange={(e) => handleUnitChange('boundaryTemp', 'Temperature', e.target.value)}
             className="bg-white/5 h-8 text-sm"
-            min="0"
-            max="10000"
             step="0.1"
           />
         </div>
@@ -118,24 +126,24 @@ export function NodeProperties({ node }: NodePropertiesProps) {
         <p className="text-xs font-medium text-muted-foreground mb-3">Surface Properties</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <Label className="text-xs" htmlFor="prop-area">Area (m²)</Label>
+            <Label className="text-xs" htmlFor="prop-area">Area ({label('Area')})</Label>
             <Input
               id="prop-area"
               type="number"
-              value={node.area ?? ''}
-              onChange={(e) => handleChange('area', parseFloat(e.target.value) || null)}
+              value={node.area != null ? parseFloat(display(node.area, 'Area').toFixed(6)) : ''}
+              onChange={(e) => handleUnitChange('area', 'Area', e.target.value)}
               className="bg-white/5 h-7 text-xs"
               min="0"
               step="0.001"
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs" htmlFor="prop-mass">Mass (kg)</Label>
+            <Label className="text-xs" htmlFor="prop-mass">Mass ({label('Mass')})</Label>
             <Input
               id="prop-mass"
               type="number"
-              value={node.mass ?? ''}
-              onChange={(e) => handleChange('mass', parseFloat(e.target.value) || null)}
+              value={node.mass != null ? parseFloat(display(node.mass, 'Mass').toFixed(4)) : ''}
+              onChange={(e) => handleUnitChange('mass', 'Mass', e.target.value)}
               className="bg-white/5 h-7 text-xs"
               min="0"
               step="0.01"

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useEditorStore, type Conductor } from '@/lib/stores/editor-store';
+import { useUnits } from '@/lib/hooks/use-units';
 
 interface ConductorPropertiesProps {
   conductor: Conductor;
@@ -12,12 +13,22 @@ interface ConductorPropertiesProps {
 export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
   const updateConductor = useEditorStore((s) => s.updateConductor);
   const nodes = useEditorStore((s) => s.nodes);
+  const { label, display, parse } = useUnits();
 
   const fromNode = nodes.find((n) => n.id === conductor.nodeFromId);
   const toNode = nodes.find((n) => n.id === conductor.nodeToId);
 
   const handleChange = (field: keyof Conductor, value: string | number | null) => {
     updateConductor(conductor.id, { [field]: value });
+  };
+
+  const handleUnitChange = (field: keyof Conductor, quantity: Parameters<typeof parse>[1], raw: string) => {
+    const displayVal = parseFloat(raw);
+    if (isNaN(displayVal)) {
+      handleChange(field, null);
+      return;
+    }
+    handleChange(field, parse(displayVal, quantity));
   };
 
   return (
@@ -50,12 +61,12 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
 
       {conductor.conductorType !== 'radiation' && (
         <div className="space-y-2">
-          <Label htmlFor="cond-g">Conductance (W/K)</Label>
+          <Label htmlFor="cond-g">Conductance ({label('Conductance')})</Label>
           <Input
             id="cond-g"
             type="number"
-            value={conductor.conductance ?? ''}
-            onChange={(e) => handleChange('conductance', parseFloat(e.target.value) || null)}
+            value={conductor.conductance != null ? parseFloat(display(conductor.conductance, 'Conductance').toFixed(6)) : ''}
+            onChange={(e) => handleUnitChange('conductance', 'Conductance', e.target.value)}
             className="bg-white/5 h-8 text-sm"
             min="0"
             step="0.001"
@@ -66,12 +77,12 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
       {conductor.conductorType === 'radiation' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="cond-area">Area (m²)</Label>
+            <Label htmlFor="cond-area">Area ({label('Area')})</Label>
             <Input
               id="cond-area"
               type="number"
-              value={conductor.area ?? ''}
-              onChange={(e) => handleChange('area', parseFloat(e.target.value) || null)}
+              value={conductor.area != null ? parseFloat(display(conductor.area, 'Area').toFixed(6)) : ''}
+              onChange={(e) => handleUnitChange('area', 'Area', e.target.value)}
               className="bg-white/5 h-8 text-sm"
               min="0"
               step="0.0001"

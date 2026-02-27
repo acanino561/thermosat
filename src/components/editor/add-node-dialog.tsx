@@ -28,28 +28,36 @@ import {
 import { Circle } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import type { ThermalNode } from '@/lib/stores/editor-store';
+import { useUnits } from '@/lib/hooks/use-units';
+import { toDisplay } from '@/lib/units';
+import { useUnitsStore } from '@/lib/stores/units-store';
 
 export function AddNodeDialog() {
   const [open, setOpen] = useState(false);
   const addNode = useEditorStore((s) => s.addNode);
+  const { label, parse } = useUnits();
+  const { unitSystem, tempUnit } = useUnitsStore();
+
+  // Default values in display units
+  const defaultTemp = toDisplay(293, 'Temperature', unitSystem, tempUnit).toFixed(1);
   const [name, setName] = useState('');
   const [nodeType, setNodeType] = useState<ThermalNode['nodeType']>('diffusion');
-  const [temperature, setTemperature] = useState('293');
+  const [temperature, setTemperature] = useState(defaultTemp);
   const [capacitance, setCapacitance] = useState('100');
-  const [boundaryTemp, setBoundaryTemp] = useState('293');
+  const [boundaryTemp, setBoundaryTemp] = useState(defaultTemp);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addNode({
       name,
       nodeType,
-      temperature: parseFloat(temperature),
+      temperature: parse(parseFloat(temperature), 'Temperature'),
       capacitance: nodeType === 'diffusion' ? parseFloat(capacitance) : null,
-      boundaryTemp: nodeType === 'boundary' ? parseFloat(boundaryTemp) : null,
+      boundaryTemp: nodeType === 'boundary' ? parse(parseFloat(boundaryTemp), 'Temperature') : null,
     });
     setOpen(false);
     setName('');
-    setTemperature('293');
+    setTemperature(defaultTemp);
     setCapacitance('100');
   };
 
@@ -100,15 +108,13 @@ export function AddNodeDialog() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="node-temp">Initial Temperature (K)</Label>
+              <Label htmlFor="node-temp">Initial Temperature ({label('Temperature')})</Label>
               <Input
                 id="node-temp"
                 type="number"
                 value={temperature}
                 onChange={(e) => setTemperature(e.target.value)}
                 required
-                min="0"
-                max="10000"
                 step="0.1"
                 className="bg-white/5"
               />
@@ -130,15 +136,13 @@ export function AddNodeDialog() {
             )}
             {nodeType === 'boundary' && (
               <div className="space-y-2">
-                <Label htmlFor="node-boundary">Boundary Temperature (K)</Label>
+                <Label htmlFor="node-boundary">Boundary Temperature ({label('Temperature')})</Label>
                 <Input
                   id="node-boundary"
                   type="number"
                   value={boundaryTemp}
                   onChange={(e) => setBoundaryTemp(e.target.value)}
                   required
-                  min="0"
-                  max="10000"
                   step="0.1"
                   className="bg-white/5"
                 />

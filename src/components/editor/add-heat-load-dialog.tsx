@@ -28,11 +28,13 @@ import {
 import { Flame } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import type { HeatLoad } from '@/lib/stores/editor-store';
+import { useUnits } from '@/lib/hooks/use-units';
 
 export function AddHeatLoadDialog() {
   const [open, setOpen] = useState(false);
   const nodes = useEditorStore((s) => s.nodes);
   const addHeatLoad = useEditorStore((s) => s.addHeatLoad);
+  const { label, parse } = useUnits();
 
   const [name, setName] = useState('');
   const [loadType, setLoadType] = useState<HeatLoad['loadType']>('constant');
@@ -45,7 +47,7 @@ export function AddHeatLoadDialog() {
       name,
       nodeId,
       loadType,
-      value: loadType === 'constant' ? parseFloat(value) : null,
+      value: loadType === 'constant' ? parse(parseFloat(value), 'Power') : null,
     });
     setOpen(false);
     setName('');
@@ -115,7 +117,7 @@ export function AddHeatLoadDialog() {
             </div>
             {loadType === 'constant' && (
               <div className="space-y-2">
-                <Label htmlFor="hl-value">Power (W)</Label>
+                <Label htmlFor="hl-value">Power ({label('Power')})</Label>
                 <Input
                   id="hl-value"
                   type="number"

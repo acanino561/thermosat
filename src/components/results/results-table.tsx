@@ -1,21 +1,26 @@
 'use client';
 
+import { useUnits } from '@/lib/hooks/use-units';
+
 interface ResultsTableProps {
   nodeResults: Record<string, { times: number[]; temperatures: number[] }>;
   nodeNames: Record<string, string>;
 }
 
 export function ResultsTable({ nodeResults, nodeNames }: ResultsTableProps) {
+  const { label, display } = useUnits();
+  const tempLabel = label('Temperature');
+
   const rows = Object.entries(nodeResults).map(([nodeId, data]) => {
     const temps = data.temperatures;
     return {
       nodeId,
       name: nodeNames[nodeId] || nodeId,
-      min: Math.min(...temps),
-      max: Math.max(...temps),
-      initial: temps[0],
-      final: temps[temps.length - 1],
-      delta: temps[temps.length - 1] - temps[0],
+      min: display(Math.min(...temps), 'Temperature'),
+      max: display(Math.max(...temps), 'Temperature'),
+      initial: display(temps[0], 'Temperature'),
+      final: display(temps[temps.length - 1], 'Temperature'),
+      delta: display(temps[temps.length - 1], 'Temperature') - display(temps[0], 'Temperature'),
     };
   });
 
@@ -27,11 +32,11 @@ export function ResultsTable({ nodeResults, nodeNames }: ResultsTableProps) {
           <thead>
             <tr className="border-b border-white/10">
               <th className="text-left py-2 px-3 text-muted-foreground font-medium">Node</th>
-              <th className="text-right py-2 px-3 text-muted-foreground font-medium">T_min (K)</th>
-              <th className="text-right py-2 px-3 text-muted-foreground font-medium">T_max (K)</th>
-              <th className="text-right py-2 px-3 text-muted-foreground font-medium">T_initial (K)</th>
-              <th className="text-right py-2 px-3 text-muted-foreground font-medium">T_final (K)</th>
-              <th className="text-right py-2 px-3 text-muted-foreground font-medium">ΔT (K)</th>
+              <th className="text-right py-2 px-3 text-muted-foreground font-medium">T_min ({tempLabel})</th>
+              <th className="text-right py-2 px-3 text-muted-foreground font-medium">T_max ({tempLabel})</th>
+              <th className="text-right py-2 px-3 text-muted-foreground font-medium">T_initial ({tempLabel})</th>
+              <th className="text-right py-2 px-3 text-muted-foreground font-medium">T_final ({tempLabel})</th>
+              <th className="text-right py-2 px-3 text-muted-foreground font-medium">ΔT ({tempLabel})</th>
             </tr>
           </thead>
           <tbody>
