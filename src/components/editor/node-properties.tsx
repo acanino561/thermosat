@@ -198,7 +198,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
               id="prop-abs"
               type="number"
               value={node.absorptivity ?? ''}
-              onChange={(e) => handleChange('absorptivity', parseFloat(e.target.value) || null)}
+              onChange={(e) => { const v = parseFloat(e.target.value); handleChange('absorptivity', isNaN(v) ? null : v); }}
               className="bg-white/5 h-7 text-xs"
               min="0"
               max="1"
@@ -211,7 +211,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
               id="prop-em"
               type="number"
               value={node.emissivity ?? ''}
-              onChange={(e) => handleChange('emissivity', parseFloat(e.target.value) || null)}
+              onChange={(e) => { const v = parseFloat(e.target.value); handleChange('emissivity', isNaN(v) ? null : v); }}
               className="bg-white/5 h-7 text-xs"
               min="0"
               max="1"
