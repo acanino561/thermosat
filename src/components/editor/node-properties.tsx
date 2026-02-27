@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ interface NodePropertiesProps {
 export function NodeProperties({ node }: NodePropertiesProps) {
   const updateNode = useEditorStore((s) => s.updateNode);
   const { label, display, parse, fmt } = useUnits();
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
 
   const handleChange = (field: keyof ThermalNode, value: string | number | null) => {
     updateNode(node.id, { [field]: value });
@@ -54,14 +56,22 @@ export function NodeProperties({ node }: NodePropertiesProps) {
   const handleUnitChange = (field: keyof ThermalNode, quantity: Parameters<typeof parse>[1], raw: string) => {
     const displayVal = parseFloat(raw);
     if (isNaN(displayVal)) {
+      setErrors((prev) => ({ ...prev, [field]: null }));
       handleChange(field, null);
       return;
     }
     const siValue = parse(displayVal, quantity);
     const error = validate(field, siValue, quantity);
-    if (error) return; // reject invalid input
+    if (error) {
+      setErrors((prev) => ({ ...prev, [field]: error }));
+      return;
+    }
+    setErrors((prev) => ({ ...prev, [field]: null }));
     handleChange(field, siValue);
   };
+
+  const FieldError = ({ field }: { field: string }) =>
+    errors[field] ? <p className="text-xs text-red-400 mt-1">{errors[field]}</p> : null;
 
   return (
     <div className="space-y-4">
@@ -119,6 +129,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
           className="bg-white/5 h-8 text-sm"
           step="0.1"
         />
+        <FieldError field="temperature" />
       </div>
 
       {node.nodeType === 'diffusion' && (
@@ -133,6 +144,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
             min="0"
             step="0.1"
           />
+          <FieldError field="capacitance" />
         </div>
       )}
 
@@ -147,6 +159,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
             className="bg-white/5 h-8 text-sm"
             step="0.1"
           />
+          <FieldError field="boundaryTemp" />
         </div>
       )}
 
@@ -164,6 +177,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
               min="0"
               step="0.001"
             />
+            <FieldError field="area" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs" htmlFor="prop-mass">Mass ({label('Mass')})</Label>
@@ -176,6 +190,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
               min="0"
               step="0.01"
             />
+            <FieldError field="mass" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs" htmlFor="prop-abs">α (absorptivity)</Label>
