@@ -1,5 +1,6 @@
 'use client';
 
+import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Github } from 'lucide-react';
 
@@ -25,9 +26,7 @@ export function OAuthButtons({ isLoading }: OAuthButtonsProps) {
         variant="outline"
         className="gap-2"
         disabled={isLoading}
-        onClick={() => {
-          // signIn('github') would go here
-        }}
+        onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
       >
         <Github className="h-4 w-4" />
         GitHub
@@ -36,9 +35,7 @@ export function OAuthButtons({ isLoading }: OAuthButtonsProps) {
         variant="outline"
         className="gap-2"
         disabled={isLoading}
-        onClick={() => {
-          // signIn('google') would go here
-        }}
+        onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
       >
         <GoogleIcon className="h-4 w-4" />
         Google

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -29,12 +31,36 @@ export function AuthForm({ mode }: AuthFormProps) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setSuccess(null);
 
-    // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      // In production: call signIn() or register API
-      window.location.href = '/dashboard';
+      if (mode === 'signup') {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error);
+        } else {
+          setSuccess(data.message);
+        }
+      } else {
+        const result = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError(result.error === 'CredentialsSignin'
+            ? 'Invalid email or password.'
+            : result.error);
+        } else {
+          window.location.href = '/dashboard';
+        }
+      }
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -84,6 +110,16 @@ export function AuthForm({ mode }: AuthFormProps) {
                 {error}
               </motion.div>
             )}
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm"
+              >
+                {success}
+              </motion.div>
+            )}
           </AnimatePresence>
 
           {mode === 'signup' && (
@@ -120,7 +156,17 @@ export function AuthForm({ mode }: AuthFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="password">Password</Label>
+              {mode === 'login' && (
+                <Link
+                  href="/reset-password"
+                  className="text-xs text-accent-blue hover:text-accent-cyan transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <div className="relative">
               <Input
                 id="password"
@@ -129,6 +175,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
+                minLength={8}
                 disabled={isLoading}
                 className="bg-white/5 pr-10"
               />

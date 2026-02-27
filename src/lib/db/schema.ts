@@ -55,12 +55,22 @@ export const simulationTypeEnum = pgEnum('simulation_type', [
 
 // ── NextAuth Tables ────────────────────────────────────────────────────────
 
+export const unitsPrefEnum = pgEnum('units_pref', ['si', 'imperial']);
+
+export const tempUnitEnum = pgEnum('temp_unit', ['K', 'C', 'F']);
+
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name'),
   email: text('email').notNull().unique(),
   emailVerified: timestamp('email_verified', { mode: 'date' }),
   image: text('image'),
+  password: text('password'), // bcrypt hash, null for OAuth-only users
+  organization: text('organization'),
+  roleTitle: text('role_title'),
+  unitsPref: unitsPrefEnum('units_pref').default('si'),
+  tempUnit: tempUnitEnum('temp_unit').default('K'),
+  deletedAt: timestamp('deleted_at', { mode: 'date' }), // soft delete
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 });
@@ -101,6 +111,20 @@ export const verificationTokens = pgTable(
   'verification_tokens',
   {
     identifier: text('identifier').notNull(),
+    token: text('token').notNull(),
+    expires: timestamp('expires', { mode: 'date' }).notNull(),
+  },
+  (table) => ({
+    compoundKey: primaryKey({
+      columns: [table.identifier, table.token],
+    }),
+  }),
+);
+
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    identifier: text('identifier').notNull(), // email
     token: text('token').notNull(),
     expires: timestamp('expires', { mode: 'date' }).notNull(),
   },
