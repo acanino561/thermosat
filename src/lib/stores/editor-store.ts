@@ -76,11 +76,20 @@ export interface SimulationConfig {
   };
 }
 
+export interface HistoryEntry {
+  snapshot: EditorSnapshot;
+  description: string;
+  timestamp: number;
+}
+
 interface EditorSnapshot {
   nodes: ThermalNode[];
   conductors: Conductor[];
   heatLoads: HeatLoad[];
 }
+
+const MAX_HISTORY = 150;
+const DEBOUNCE_MS = 500;
 
 interface EditorState {
   // Model metadata
@@ -102,9 +111,13 @@ interface EditorState {
   isDirty: boolean;
   activeView: '3d' | 'network' | 'results';
 
-  // History
-  history: EditorSnapshot[];
+  // History (undo/redo)
+  history: HistoryEntry[];
   historyIndex: number;
+  /** Timer id for debounced property edits */
+  _debounceTimer: ReturnType<typeof setTimeout> | null;
+  /** Pending description for debounced push */
+  _pendingDescription: string | null;
 
   // Simulation
   simulationStatus: 'idle' | 'running' | 'completed' | 'failed';
@@ -134,15 +147,33 @@ interface EditorState {
   setShowResultsOverlay: (show: boolean) => void;
   setActiveView: (view: '3d' | 'network' | 'results') => void;
 
+  /** Push a snapshot immediately with a description */
+  pushHistory: (description?: string) => void;
+  /** Push a snapshot after a debounce delay (for property edits) */
+  pushHistoryDebounced: (description: string) => void;
+  /** Flush any pending debounced history entry immediately */
+  flushDebouncedHistory: () => void;
   undo: () => void;
   redo: () => void;
-  pushHistory: () => void;
+
+  /** Whether undo is available */
+  canUndo: () => boolean;
+  /** Whether redo is available */
+  canRedo: () => boolean;
 
   runSimulation: (config: SimulationConfig) => Promise<void>;
 }
 
 function generateId(): string {
   return crypto.randomUUID();
+}
+
+function takeSnapshot(state: { nodes: ThermalNode[]; conductors: Conductor[]; heatLoads: HeatLoad[] }): EditorSnapshot {
+  return {
+    nodes: structuredClone(state.nodes),
+    conductors: structuredClone(state.conductors),
+    heatLoads: structuredClone(state.heatLoads),
+  };
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -164,6 +195,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   history: [],
   historyIndex: -1,
+  _debounceTimer: null,
+  _pendingDescription: null,
 
   simulationStatus: 'idle',
   simulationResults: null,
@@ -182,7 +215,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const conductors = await conductorsRes.json();
       const heatLoads = await heatLoadsRes.json();
 
-      // Assign positions to nodes for graph visualization
       const positionedNodes = (Array.isArray(nodes) ? nodes : []).map(
         (node: ThermalNode, i: number) => ({
           ...node,
@@ -191,19 +223,30 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         }),
       );
 
+      const safeConductors = Array.isArray(conductors) ? conductors : [];
+      const safeHeatLoads = Array.isArray(heatLoads) ? heatLoads : [];
+
+      const initialEntry: HistoryEntry = {
+        snapshot: { nodes: structuredClone(positionedNodes), conductors: structuredClone(safeConductors), heatLoads: structuredClone(safeHeatLoads) },
+        description: 'Model loaded',
+        timestamp: Date.now(),
+      };
+
       set({
         projectId,
         modelId,
         modelName: model.name || 'Untitled Model',
         nodes: positionedNodes,
-        conductors: Array.isArray(conductors) ? conductors : [],
-        heatLoads: Array.isArray(heatLoads) ? heatLoads : [],
+        conductors: safeConductors,
+        heatLoads: safeHeatLoads,
         orbitalConfig: model.orbitalConfig || null,
         isDirty: false,
-        history: [{ nodes: positionedNodes, conductors: conductors, heatLoads: heatLoads }],
+        history: [initialEntry],
         historyIndex: 0,
         simulationStatus: 'idle',
         simulationResults: null,
+        _debounceTimer: null,
+        _pendingDescription: null,
       });
     } catch (err) {
       console.error('Failed to load model:', err);
@@ -215,22 +258,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!projectId || !modelId) return;
 
     try {
-      // Save model data via API — simplified batch approach
-      // In production, this would diff and send only changes
       await fetch(`/api/projects/${projectId}/models/${modelId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nodes,
-          conductors,
-          heatLoads,
-        }),
+        body: JSON.stringify({ nodes, conductors, heatLoads }),
       });
       set({ isDirty: false });
     } catch (err) {
       console.error('Failed to save model:', err);
     }
   },
+
+  // ─── Nodes ──────────────────────────────────────────────────────
 
   addNode: (node) => {
     const id = generateId();
@@ -241,17 +280,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       y: node.y ?? 300 + Math.random() * 200,
     };
     set((state) => ({ nodes: [...state.nodes, newNode], isDirty: true }));
-    get().pushHistory();
+    get().pushHistory(`Added node '${newNode.name}'`);
   },
 
   updateNode: (id, data) => {
+    const node = get().nodes.find((n) => n.id === id);
     set((state) => ({
       nodes: state.nodes.map((n) => (n.id === id ? { ...n, ...data } : n)),
       isDirty: true,
     }));
+    const changedFields = Object.keys(data).join(', ');
+    get().pushHistoryDebounced(`Changed ${changedFields} on node '${node?.name ?? id.slice(0, 8)}'`);
   },
 
   deleteNode: (id) => {
+    const node = get().nodes.find((n) => n.id === id);
+    get().flushDebouncedHistory();
     set((state) => ({
       nodes: state.nodes.filter((n) => n.id !== id),
       conductors: state.conductors.filter(
@@ -261,58 +305,76 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId,
       isDirty: true,
     }));
-    get().pushHistory();
+    get().pushHistory(`Deleted node '${node?.name ?? id.slice(0, 8)}'`);
   },
+
+  // ─── Conductors ─────────────────────────────────────────────────
 
   addConductor: (conductor) => {
     const id = generateId();
+    const newCond = { ...conductor, id };
     set((state) => ({
-      conductors: [...state.conductors, { ...conductor, id }],
+      conductors: [...state.conductors, newCond],
       isDirty: true,
     }));
-    get().pushHistory();
+    get().pushHistory(`Added conductor '${newCond.name}'`);
   },
 
   updateConductor: (id, data) => {
+    const cond = get().conductors.find((c) => c.id === id);
     set((state) => ({
       conductors: state.conductors.map((c) => (c.id === id ? { ...c, ...data } : c)),
       isDirty: true,
     }));
+    const changedFields = Object.keys(data).join(', ');
+    get().pushHistoryDebounced(`Changed ${changedFields} on conductor '${cond?.name ?? id.slice(0, 8)}'`);
   },
 
   deleteConductor: (id) => {
+    const cond = get().conductors.find((c) => c.id === id);
+    get().flushDebouncedHistory();
     set((state) => ({
       conductors: state.conductors.filter((c) => c.id !== id),
       selectedConductorId: state.selectedConductorId === id ? null : state.selectedConductorId,
       isDirty: true,
     }));
-    get().pushHistory();
+    get().pushHistory(`Deleted conductor '${cond?.name ?? id.slice(0, 8)}'`);
   },
+
+  // ─── Heat Loads ─────────────────────────────────────────────────
 
   addHeatLoad: (load) => {
     const id = generateId();
+    const newLoad = { ...load, id };
     set((state) => ({
-      heatLoads: [...state.heatLoads, { ...load, id }],
+      heatLoads: [...state.heatLoads, newLoad],
       isDirty: true,
     }));
-    get().pushHistory();
+    get().pushHistory(`Added heat load '${newLoad.name}'`);
   },
 
   updateHeatLoad: (id, data) => {
+    const hl = get().heatLoads.find((h) => h.id === id);
     set((state) => ({
       heatLoads: state.heatLoads.map((h) => (h.id === id ? { ...h, ...data } : h)),
       isDirty: true,
     }));
+    const changedFields = Object.keys(data).join(', ');
+    get().pushHistoryDebounced(`Changed ${changedFields} on heat load '${hl?.name ?? id.slice(0, 8)}'`);
   },
 
   deleteHeatLoad: (id) => {
+    const hl = get().heatLoads.find((h) => h.id === id);
+    get().flushDebouncedHistory();
     set((state) => ({
       heatLoads: state.heatLoads.filter((h) => h.id !== id),
       selectedHeatLoadId: state.selectedHeatLoadId === id ? null : state.selectedHeatLoadId,
       isDirty: true,
     }));
-    get().pushHistory();
+    get().pushHistory(`Deleted heat load '${hl?.name ?? id.slice(0, 8)}'`);
   },
+
+  // ─── Selection ──────────────────────────────────────────────────
 
   selectNode: (id) =>
     set({ selectedNodeId: id, selectedConductorId: null, selectedHeatLoadId: null }),
@@ -329,29 +391,95 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setShowResultsOverlay: (show) => set({ showResultsOverlay: show }),
   setActiveView: (view) => set({ activeView: view }),
 
-  pushHistory: () => {
-    const { nodes, conductors, heatLoads, history, historyIndex } = get();
-    const snapshot: EditorSnapshot = {
-      nodes: structuredClone(nodes),
-      conductors: structuredClone(conductors),
-      heatLoads: structuredClone(heatLoads),
+  // ─── History ────────────────────────────────────────────────────
+
+  pushHistory: (description = 'Unknown action') => {
+    const state = get();
+    // Clear any pending debounce
+    if (state._debounceTimer) {
+      clearTimeout(state._debounceTimer);
+    }
+
+    const entry: HistoryEntry = {
+      snapshot: takeSnapshot(state),
+      description,
+      timestamp: Date.now(),
     };
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(snapshot);
-    // Keep max 50 history entries
-    if (newHistory.length > 50) newHistory.shift();
-    set({ history: newHistory, historyIndex: newHistory.length - 1 });
+
+    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    newHistory.push(entry);
+
+    // Trim to max
+    while (newHistory.length > MAX_HISTORY) {
+      newHistory.shift();
+    }
+
+    set({
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+      _debounceTimer: null,
+      _pendingDescription: null,
+    });
+  },
+
+  pushHistoryDebounced: (description: string) => {
+    const state = get();
+
+    // Clear existing timer
+    if (state._debounceTimer) {
+      clearTimeout(state._debounceTimer);
+    }
+
+    const timer = setTimeout(() => {
+      get().pushHistory(description);
+    }, DEBOUNCE_MS);
+
+    set({ _debounceTimer: timer, _pendingDescription: description });
+  },
+
+  flushDebouncedHistory: () => {
+    const { _debounceTimer, _pendingDescription } = get();
+    if (_debounceTimer) {
+      clearTimeout(_debounceTimer);
+      if (_pendingDescription) {
+        // Push using current state (before the delete/add that triggered flush)
+        const state = get();
+        const entry: HistoryEntry = {
+          snapshot: takeSnapshot(state),
+          description: _pendingDescription,
+          timestamp: Date.now(),
+        };
+        const newHistory = state.history.slice(0, state.historyIndex + 1);
+        newHistory.push(entry);
+        while (newHistory.length > MAX_HISTORY) {
+          newHistory.shift();
+        }
+        set({
+          history: newHistory,
+          historyIndex: newHistory.length - 1,
+          _debounceTimer: null,
+          _pendingDescription: null,
+        });
+      } else {
+        set({ _debounceTimer: null, _pendingDescription: null });
+      }
+    }
   },
 
   undo: () => {
-    const { history, historyIndex } = get();
-    if (historyIndex <= 0) return;
-    const prev = history[historyIndex - 1];
+    const { history, historyIndex, _debounceTimer } = get();
+    // Flush any pending debounced edits first
+    if (_debounceTimer) {
+      get().flushDebouncedHistory();
+    }
+    const idx = get().historyIndex;
+    if (idx <= 0) return;
+    const prev = get().history[idx - 1];
     set({
-      nodes: structuredClone(prev.nodes),
-      conductors: structuredClone(prev.conductors),
-      heatLoads: structuredClone(prev.heatLoads),
-      historyIndex: historyIndex - 1,
+      nodes: structuredClone(prev.snapshot.nodes),
+      conductors: structuredClone(prev.snapshot.conductors),
+      heatLoads: structuredClone(prev.snapshot.heatLoads),
+      historyIndex: idx - 1,
       isDirty: true,
     });
   },
@@ -361,13 +489,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (historyIndex >= history.length - 1) return;
     const next = history[historyIndex + 1];
     set({
-      nodes: structuredClone(next.nodes),
-      conductors: structuredClone(next.conductors),
-      heatLoads: structuredClone(next.heatLoads),
+      nodes: structuredClone(next.snapshot.nodes),
+      conductors: structuredClone(next.snapshot.conductors),
+      heatLoads: structuredClone(next.snapshot.heatLoads),
       historyIndex: historyIndex + 1,
       isDirty: true,
     });
   },
+
+  canUndo: () => get().historyIndex > 0,
+  canRedo: () => get().historyIndex < get().history.length - 1,
+
+  // ─── Simulation ─────────────────────────────────────────────────
 
   runSimulation: async (config) => {
     const { projectId, modelId } = get();
@@ -389,7 +522,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       const result = await res.json();
 
-      // Poll for results if needed (simplified — assumes sync response)
       set({
         simulationStatus: 'completed',
         simulationResults: result,
