@@ -90,6 +90,10 @@ interface EditorSnapshot {
 
 const MAX_HISTORY = 150;
 const DEBOUNCE_MS = 500;
+const AUTO_SAVE_DEBOUNCE_MS = 30_000; // 30 seconds
+const SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+export type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 interface EditorState {
   // Model metadata
@@ -111,6 +115,13 @@ interface EditorState {
   isDirty: boolean;
   activeView: '3d' | 'network' | 'results';
 
+  // Auto-save state
+  autoSaveStatus: AutoSaveStatus;
+  lastSavedAt: string | null;
+  _autoSaveTimer: ReturnType<typeof setTimeout> | null;
+  _snapshotIntervalTimer: ReturnType<typeof setInterval> | null;
+  _lastSnapshotAt: number;
+
   // History (undo/redo)
   history: HistoryEntry[];
   historyIndex: number;
@@ -125,7 +136,13 @@ interface EditorState {
 
   // Actions
   loadModel: (projectId: string, modelId: string) => Promise<void>;
-  save: () => Promise<void>;
+  save: (snapshotDescription?: string) => Promise<void>;
+  /** Create a version snapshot without full save */
+  createSnapshot: (description: string) => Promise<void>;
+  /** Trigger auto-save debounce */
+  _scheduleAutoSave: () => void;
+  /** Cleanup timers */
+  cleanup: () => void;
 
   addNode: (node: Omit<ThermalNode, 'id'>) => void;
   updateNode: (id: string, data: Partial<ThermalNode>) => void;
@@ -193,6 +210,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   isDirty: false,
   activeView: '3d',
 
+  autoSaveStatus: 'idle',
+  lastSavedAt: null,
+  _autoSaveTimer: null,
+  _snapshotIntervalTimer: null,
+  _lastSnapshotAt: 0,
+
   history: [],
   historyIndex: -1,
   _debounceTimer: null,
@@ -232,6 +255,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         timestamp: Date.now(),
       };
 
+      // Clear existing timers
+      const prev = get();
+      if (prev._autoSaveTimer) clearTimeout(prev._autoSaveTimer);
+      if (prev._snapshotIntervalTimer) clearInterval(prev._snapshotIntervalTimer);
+
+      // Set up periodic snapshot timer (every 10 minutes of active editing)
+      const snapshotInterval = setInterval(() => {
+        const s = get();
+        if (s.isDirty && s.projectId && s.modelId) {
+          s.createSnapshot('Periodic auto-snapshot');
+        }
+      }, SNAPSHOT_INTERVAL_MS);
+
       set({
         projectId,
         modelId,
@@ -241,6 +277,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         heatLoads: safeHeatLoads,
         orbitalConfig: model.orbitalConfig || null,
         isDirty: false,
+        autoSaveStatus: 'idle',
+        lastSavedAt: null,
+        _autoSaveTimer: null,
+        _snapshotIntervalTimer: snapshotInterval,
+        _lastSnapshotAt: Date.now(),
         history: [initialEntry],
         historyIndex: 0,
         simulationStatus: 'idle',
@@ -253,20 +294,81 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
-  save: async () => {
-    const { projectId, modelId, nodes, conductors, heatLoads } = get();
+  save: async (snapshotDescription?: string) => {
+    const { projectId, modelId, nodes, conductors, heatLoads, _autoSaveTimer } = get();
+    if (!projectId || !modelId) return;
+
+    // Clear pending auto-save since we're saving now
+    if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
+
+    set({ autoSaveStatus: 'saving', _autoSaveTimer: null });
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/models/${modelId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nodes,
+          conductors,
+          heatLoads,
+          snapshotDescription: snapshotDescription || 'Auto-save',
+          createSnapshot: true,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Save failed');
+      const data = await res.json();
+
+      set({
+        isDirty: false,
+        autoSaveStatus: 'saved',
+        lastSavedAt: data.savedAt || new Date().toISOString(),
+        _lastSnapshotAt: Date.now(),
+      });
+    } catch (err) {
+      console.error('Failed to save model:', err);
+      set({ autoSaveStatus: 'error' });
+    }
+  },
+
+  createSnapshot: async (description: string) => {
+    const { projectId, modelId, nodes, conductors, heatLoads, orbitalConfig } = get();
     if (!projectId || !modelId) return;
 
     try {
-      await fetch(`/api/projects/${projectId}/models/${modelId}`, {
-        method: 'PUT',
+      await fetch(`/api/projects/${projectId}/models/${modelId}/snapshots`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodes, conductors, heatLoads }),
+        body: JSON.stringify({
+          description,
+          snapshot: { nodes, conductors, heatLoads, orbitalConfig },
+        }),
       });
-      set({ isDirty: false });
+      set({ _lastSnapshotAt: Date.now() });
     } catch (err) {
-      console.error('Failed to save model:', err);
+      console.error('Failed to create snapshot:', err);
     }
+  },
+
+  _scheduleAutoSave: () => {
+    const { _autoSaveTimer } = get();
+    if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
+
+    const timer = setTimeout(() => {
+      const s = get();
+      if (s.isDirty && s.projectId && s.modelId) {
+        s.save('Auto-save');
+      }
+    }, AUTO_SAVE_DEBOUNCE_MS);
+
+    set({ _autoSaveTimer: timer });
+  },
+
+  cleanup: () => {
+    const { _autoSaveTimer, _snapshotIntervalTimer } = get();
+    if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
+    if (_snapshotIntervalTimer) clearInterval(_snapshotIntervalTimer);
+    set({ _autoSaveTimer: null, _snapshotIntervalTimer: null });
   },
 
   // ─── Nodes ──────────────────────────────────────────────────────
@@ -281,6 +383,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     };
     set((state) => ({ nodes: [...state.nodes, newNode], isDirty: true }));
     get().pushHistory(`Added node '${newNode.name}'`);
+    get()._scheduleAutoSave();
   },
 
   updateNode: (id, data) => {
@@ -291,6 +394,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
     const changedFields = Object.keys(data).join(', ');
     get().pushHistoryDebounced(`Changed ${changedFields} on node '${node?.name ?? id.slice(0, 8)}'`);
+    get()._scheduleAutoSave();
   },
 
   deleteNode: (id) => {
@@ -306,6 +410,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       isDirty: true,
     }));
     get().pushHistory(`Deleted node '${node?.name ?? id.slice(0, 8)}'`);
+    get()._scheduleAutoSave();
   },
 
   // ─── Conductors ─────────────────────────────────────────────────
@@ -318,6 +423,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       isDirty: true,
     }));
     get().pushHistory(`Added conductor '${newCond.name}'`);
+    get()._scheduleAutoSave();
   },
 
   updateConductor: (id, data) => {
@@ -328,6 +434,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
     const changedFields = Object.keys(data).join(', ');
     get().pushHistoryDebounced(`Changed ${changedFields} on conductor '${cond?.name ?? id.slice(0, 8)}'`);
+    get()._scheduleAutoSave();
   },
 
   deleteConductor: (id) => {
@@ -339,6 +446,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       isDirty: true,
     }));
     get().pushHistory(`Deleted conductor '${cond?.name ?? id.slice(0, 8)}'`);
+    get()._scheduleAutoSave();
   },
 
   // ─── Heat Loads ─────────────────────────────────────────────────
@@ -351,6 +459,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       isDirty: true,
     }));
     get().pushHistory(`Added heat load '${newLoad.name}'`);
+    get()._scheduleAutoSave();
   },
 
   updateHeatLoad: (id, data) => {
@@ -361,6 +470,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
     const changedFields = Object.keys(data).join(', ');
     get().pushHistoryDebounced(`Changed ${changedFields} on heat load '${hl?.name ?? id.slice(0, 8)}'`);
+    get()._scheduleAutoSave();
   },
 
   deleteHeatLoad: (id) => {
@@ -372,6 +482,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       isDirty: true,
     }));
     get().pushHistory(`Deleted heat load '${hl?.name ?? id.slice(0, 8)}'`);
+    get()._scheduleAutoSave();
   },
 
   // ─── Selection ──────────────────────────────────────────────────
@@ -505,6 +616,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   runSimulation: async (config) => {
     const { projectId, modelId } = get();
     if (!projectId || !modelId) return;
+
+    // Create pre-simulation snapshot
+    await get().createSnapshot('Pre-simulation snapshot');
 
     set({ simulationStatus: 'running' });
 

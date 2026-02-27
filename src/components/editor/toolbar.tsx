@@ -23,12 +23,15 @@ import {
   ArrowLeft,
   Loader2,
   History,
+  Clock,
+  Check,
 } from 'lucide-react';
-import { useEditorStore } from '@/lib/stores/editor-store';
+import { useEditorStore, type AutoSaveStatus } from '@/lib/stores/editor-store';
 import { AddNodeDialog } from './add-node-dialog';
 import { AddConductorDialog } from './add-conductor-dialog';
 import { AddHeatLoadDialog } from './add-heat-load-dialog';
 import { HistoryPanel } from './history-panel';
+import { VersionHistory } from './version-history';
 import Link from 'next/link';
 
 interface ToolbarProps {
@@ -40,6 +43,7 @@ export function Toolbar({ projectId }: ToolbarProps) {
     modelName,
     isDirty,
     save,
+    createSnapshot,
     undo,
     redo,
     history,
@@ -48,10 +52,19 @@ export function Toolbar({ projectId }: ToolbarProps) {
     runSimulation,
     showResultsOverlay,
     setShowResultsOverlay,
+    autoSaveStatus,
+    lastSavedAt,
+    cleanup,
   } = useEditorStore();
 
   const [isSaving, setIsSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => cleanup();
+  }, [cleanup]);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
@@ -76,7 +89,7 @@ export function Toolbar({ projectId }: ToolbarProps) {
         redo();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        save();
+        save('Manual save');
       }
     };
 
@@ -86,8 +99,14 @@ export function Toolbar({ projectId }: ToolbarProps) {
 
   const handleSave = async () => {
     setIsSaving(true);
-    await save();
+    await save('Manual save');
     setIsSaving(false);
+  };
+
+  const formatSavedTime = (iso: string | null) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const handleRunSimulation = () => {
@@ -124,11 +143,21 @@ export function Toolbar({ projectId }: ToolbarProps) {
 
         <div className="flex items-center gap-2">
           <span className="font-heading font-semibold text-sm">{modelName}</span>
-          {isDirty && (
+          {autoSaveStatus === 'saving' ? (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-blue-400 border-blue-400 gap-1">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              Saving...
+            </Badge>
+          ) : autoSaveStatus === 'saved' && lastSavedAt ? (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-400 border-green-400 gap-1">
+              <Check className="h-2.5 w-2.5" />
+              Saved {formatSavedTime(lastSavedAt)}
+            </Badge>
+          ) : isDirty ? (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-400 border-orange-400">
               unsaved
             </Badge>
-          )}
+          ) : null}
         </div>
 
         <Separator orientation="vertical" className="h-6 mx-2" />
@@ -181,6 +210,20 @@ export function Toolbar({ projectId }: ToolbarProps) {
             </Button>
           </TooltipTrigger>
           <TooltipContent>Action history</TooltipContent>
+        </Tooltip>
+
+        {/* Version history toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={showVersionHistory ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={() => setShowVersionHistory(!showVersionHistory)}
+            >
+              <Clock className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Version history</TooltipContent>
         </Tooltip>
 
         {/* Save */}
@@ -251,6 +294,11 @@ export function Toolbar({ projectId }: ToolbarProps) {
 
       {/* History panel (collapsible, below toolbar) */}
       {showHistory && <HistoryPanel onClose={() => setShowHistory(false)} />}
+
+      {/* Version history sidebar */}
+      {showVersionHistory && (
+        <VersionHistory onClose={() => setShowVersionHistory(false)} />
+      )}
     </>
   );
 }

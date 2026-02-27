@@ -196,6 +196,7 @@ export const modelSnapshots = pgTable(
       .notNull()
       .references(() => thermalModels.id, { onDelete: 'cascade' }),
     version: integer('version').notNull(),
+    description: text('description').default('Auto-save').notNull(),
     snapshot: jsonb('snapshot').$type<ModelSnapshotData>().notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },

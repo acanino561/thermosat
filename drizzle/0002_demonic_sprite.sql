@@ -1,0 +1,1 @@
+ALTER TABLE "model_snapshots" ADD COLUMN "description" text DEFAULT 'Auto-save' NOT NULL;
