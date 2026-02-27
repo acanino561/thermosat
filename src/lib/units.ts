@@ -11,7 +11,8 @@ export type QuantityType =
   | 'SpecificHeat'
   | 'ThermalConductivity'
   | 'Density'
-  | 'Area';
+  | 'Area'
+  | 'Capacitance';
 
 export type UnitSystem = 'SI' | 'Imperial';
 export type TempUnit = 'K' | 'C' | 'F';
@@ -27,6 +28,7 @@ const CONVERSIONS: Record<Exclude<QuantityType, 'Temperature'>, { factor: number
   ThermalConductivity:  { factor: 0.577789,    siLabel: 'W/(m·K)',        imperialLabel: 'BTU/(hr·ft·°F)' },
   Density:              { factor: 0.062428,    siLabel: 'kg/m³',          imperialLabel: 'lbm/ft³' },
   Area:                 { factor: 10.7639,     siLabel: 'm²',             imperialLabel: 'ft²' },
+  Capacitance:          { factor: 1.89563,     siLabel: 'J/K',            imperialLabel: 'BTU/°F' },
 };
 
 function convertTempFromSI(kelvin: number, tempUnit: TempUnit): number {
@@ -53,16 +55,9 @@ function getTempLabel(tempUnit: TempUnit): string {
   }
 }
 
-/** Resolve effective temp unit: Imperial forces °F, SI uses user's tempUnit (K or °C) */
-function resolveTemp(unitSystem: UnitSystem, tempUnit: TempUnit): TempUnit {
-  if (unitSystem === 'Imperial') return 'F';
-  // In SI mode, allow K or C; if somehow F is set, default to K
-  return tempUnit === 'F' ? 'K' : tempUnit;
-}
-
 /**
  * Format a value from SI internal units to display string.
- * For Temperature, pass tempUnit to control K/°C/°F independently.
+ * Temperature unit is selected independently via tempUnit (K/°C/°F).
  */
 export function formatValue(
   value: number,
@@ -72,9 +67,8 @@ export function formatValue(
   decimals: number = 2,
 ): string {
   if (quantity === 'Temperature') {
-    const effectiveTemp = resolveTemp(unitSystem, tempUnit);
-    const converted = convertTempFromSI(value, effectiveTemp);
-    return `${converted.toFixed(decimals)} ${getTempLabel(effectiveTemp)}`;
+    const converted = convertTempFromSI(value, tempUnit);
+    return `${converted.toFixed(decimals)} ${getTempLabel(tempUnit)}`;
   }
   const conv = CONVERSIONS[quantity];
   if (unitSystem === 'Imperial') {
@@ -93,8 +87,7 @@ export function parseInput(
   tempUnit: TempUnit = 'K',
 ): number {
   if (quantity === 'Temperature') {
-    const effectiveTemp = resolveTemp(unitSystem, tempUnit);
-    return convertTempToSI(displayValue, effectiveTemp);
+    return convertTempToSI(displayValue, tempUnit);
   }
   if (unitSystem === 'Imperial') {
     return displayValue / CONVERSIONS[quantity].factor;
@@ -111,7 +104,7 @@ export function getUnitLabel(
   tempUnit: TempUnit = 'K',
 ): string {
   if (quantity === 'Temperature') {
-    return getTempLabel(resolveTemp(unitSystem, tempUnit));
+    return getTempLabel(tempUnit);
   }
   const conv = CONVERSIONS[quantity];
   return unitSystem === 'Imperial' ? conv.imperialLabel : conv.siLabel;
@@ -127,7 +120,7 @@ export function toDisplay(
   tempUnit: TempUnit = 'K',
 ): number {
   if (quantity === 'Temperature') {
-    return convertTempFromSI(value, resolveTemp(unitSystem, tempUnit));
+    return convertTempFromSI(value, tempUnit);
   }
   if (unitSystem === 'Imperial') {
     return value * CONVERSIONS[quantity].factor;

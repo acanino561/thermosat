@@ -17,18 +17,11 @@ export const useUnitsStore = create<UnitsState>((set, get) => ({
 
   setUnitSystem: async (system: UnitSystem) => {
     set({ unitSystem: system });
-    // If switching to Imperial, force temp to F
-    if (system === 'Imperial') {
-      set({ tempUnit: 'F' });
-    }
     try {
       await fetch('/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          unitsPref: system.toLowerCase(),
-          ...(system === 'Imperial' ? { tempUnit: 'F' } : {}),
-        }),
+        body: JSON.stringify({ unitsPref: system.toLowerCase() }),
       });
     } catch (e) {
       console.error('Failed to save unit preference:', e);

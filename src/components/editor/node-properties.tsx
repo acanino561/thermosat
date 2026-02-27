@@ -12,6 +12,16 @@ import {
 } from '@/components/ui/select';
 import { useEditorStore, type ThermalNode } from '@/lib/stores/editor-store';
 import { useUnits } from '@/lib/hooks/use-units';
+import type { QuantityType } from '@/lib/units';
+
+/** Validation bounds in SI units */
+const BOUNDS: Partial<Record<string, { min?: number; max?: number }>> = {
+  temperature: { min: 0 },       // > 0 K
+  boundaryTemp: { min: 0 },      // > 0 K
+  capacitance: { min: 0 },       // >= 0 J/K
+  area: { min: 0 },              // >= 0 m²
+  mass: { min: 0 },              // >= 0 kg
+};
 
 interface NodePropertiesProps {
   node: ThermalNode;
@@ -19,10 +29,25 @@ interface NodePropertiesProps {
 
 export function NodeProperties({ node }: NodePropertiesProps) {
   const updateNode = useEditorStore((s) => s.updateNode);
-  const { label, display, parse } = useUnits();
+  const { label, display, parse, fmt } = useUnits();
 
   const handleChange = (field: keyof ThermalNode, value: string | number | null) => {
     updateNode(node.id, { [field]: value });
+  };
+
+  /** Validate SI value against bounds; returns error message or null */
+  const validate = (field: string, siValue: number, quantity?: QuantityType): string | null => {
+    const bound = BOUNDS[field];
+    if (!bound) return null;
+    if (bound.min != null && siValue < bound.min) {
+      const displayMin = quantity ? fmt(bound.min, quantity) : String(bound.min);
+      return `Must be ≥ ${displayMin}`;
+    }
+    if (bound.max != null && siValue > bound.max) {
+      const displayMax = quantity ? fmt(bound.max, quantity) : String(bound.max);
+      return `Must be ≤ ${displayMax}`;
+    }
+    return null;
   };
 
   /** For unit-aware numeric fields: display converted value, store SI */
@@ -32,7 +57,10 @@ export function NodeProperties({ node }: NodePropertiesProps) {
       handleChange(field, null);
       return;
     }
-    handleChange(field, parse(displayVal, quantity));
+    const siValue = parse(displayVal, quantity);
+    const error = validate(field, siValue, quantity);
+    if (error) return; // reject invalid input
+    handleChange(field, siValue);
   };
 
   return (
@@ -86,7 +114,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
         <Input
           id="prop-temp"
           type="number"
-          value={parseFloat(display(node.temperature, 'Temperature').toFixed(4))}
+          value={display(node.temperature, 'Temperature')}
           onChange={(e) => handleUnitChange('temperature', 'Temperature', e.target.value)}
           className="bg-white/5 h-8 text-sm"
           step="0.1"
@@ -95,12 +123,12 @@ export function NodeProperties({ node }: NodePropertiesProps) {
 
       {node.nodeType === 'diffusion' && (
         <div className="space-y-2">
-          <Label htmlFor="prop-cap">Capacitance (J/K)</Label>
+          <Label htmlFor="prop-cap">Capacitance ({label('Capacitance')})</Label>
           <Input
             id="prop-cap"
             type="number"
-            value={node.capacitance ?? ''}
-            onChange={(e) => handleChange('capacitance', parseFloat(e.target.value) || null)}
+            value={node.capacitance != null ? display(node.capacitance, 'Capacitance') : ''}
+            onChange={(e) => handleUnitChange('capacitance', 'Capacitance', e.target.value)}
             className="bg-white/5 h-8 text-sm"
             min="0"
             step="0.1"
@@ -114,7 +142,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
           <Input
             id="prop-btemp"
             type="number"
-            value={node.boundaryTemp != null ? parseFloat(display(node.boundaryTemp, 'Temperature').toFixed(4)) : ''}
+            value={node.boundaryTemp != null ? display(node.boundaryTemp, 'Temperature') : ''}
             onChange={(e) => handleUnitChange('boundaryTemp', 'Temperature', e.target.value)}
             className="bg-white/5 h-8 text-sm"
             step="0.1"
@@ -130,7 +158,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
             <Input
               id="prop-area"
               type="number"
-              value={node.area != null ? parseFloat(display(node.area, 'Area').toFixed(6)) : ''}
+              value={node.area != null ? display(node.area, 'Area') : ''}
               onChange={(e) => handleUnitChange('area', 'Area', e.target.value)}
               className="bg-white/5 h-7 text-xs"
               min="0"
@@ -142,7 +170,7 @@ export function NodeProperties({ node }: NodePropertiesProps) {
             <Input
               id="prop-mass"
               type="number"
-              value={node.mass != null ? parseFloat(display(node.mass, 'Mass').toFixed(4)) : ''}
+              value={node.mass != null ? display(node.mass, 'Mass') : ''}
               onChange={(e) => handleUnitChange('mass', 'Mass', e.target.value)}
               className="bg-white/5 h-7 text-xs"
               min="0"

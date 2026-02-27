@@ -65,7 +65,7 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
           <Input
             id="cond-g"
             type="number"
-            value={conductor.conductance != null ? parseFloat(display(conductor.conductance, 'Conductance').toFixed(6)) : ''}
+            value={conductor.conductance != null ? display(conductor.conductance, 'Conductance') : ''}
             onChange={(e) => handleUnitChange('conductance', 'Conductance', e.target.value)}
             className="bg-white/5 h-8 text-sm"
             min="0"
@@ -81,7 +81,7 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
             <Input
               id="cond-area"
               type="number"
-              value={conductor.area != null ? parseFloat(display(conductor.area, 'Area').toFixed(6)) : ''}
+              value={conductor.area != null ? display(conductor.area, 'Area') : ''}
               onChange={(e) => handleUnitChange('area', 'Area', e.target.value)}
               className="bg-white/5 h-8 text-sm"
               min="0"
