@@ -18,6 +18,7 @@ import { SurfaceContextMenu } from './surface-context-menu';
 import { SurfaceProperties } from './surface-properties';
 import { ThermalLegend } from './thermal-legend';
 import { ViewportContextMenu } from './viewport-context-menu';
+import { configureShadows, checkFps, SHADOW_MAP_SIZE_HIGH, SHADOW_MAP_SIZE_LOW } from '@/lib/three/shadow-config';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -465,6 +466,7 @@ interface CadFaceMeshProps {
 }
 
 function CadFaceMesh({ face, isSelected, isHovered, nodeColor, renderMode, thermalColor, onSelect, onHover, onContextMenu }: CadFaceMeshProps) {
+  const hasSimResults = useEditorStore((s) => !!s.simulationResults);
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(face.positions, 3));
@@ -495,6 +497,8 @@ function CadFaceMesh({ face, isSelected, isHovered, nodeColor, renderMode, therm
     <group>
       <mesh
         geometry={geometry}
+        castShadow={hasSimResults}
+        receiveShadow={hasSimResults}
         onClick={(e) => {
           e.stopPropagation();
           onSelect(face.id, e.nativeEvent.shiftKey);
@@ -783,7 +787,21 @@ function SceneContents({ onFaceContextMenu, screenshotGlRef }: SceneContentsProp
     <>
       {/* Lighting */}
       <ambientLight intensity={0.25} />
-      <directionalLight position={[10, 15, 10]} intensity={0.8} color="#e8eef6" />
+      <directionalLight
+        position={[10, 15, 10]}
+        intensity={0.8}
+        color="#e8eef6"
+        castShadow
+        shadow-mapSize-width={SHADOW_MAP_SIZE_HIGH}
+        shadow-mapSize-height={SHADOW_MAP_SIZE_HIGH}
+        shadow-camera-near={0.1}
+        shadow-camera-far={60}
+        shadow-camera-left={-12}
+        shadow-camera-right={12}
+        shadow-camera-top={12}
+        shadow-camera-bottom={-12}
+        shadow-bias={-0.0005}
+      />
       <directionalLight position={[-5, -5, -5]} intensity={0.15} color="#4488cc" />
       <pointLight position={[0, 8, 0]} intensity={0.3} color="#00e5ff" distance={25} />
 
@@ -910,8 +928,26 @@ function SceneContents({ onFaceContextMenu, screenshotGlRef }: SceneContentsProp
 
       {/* Screenshot capture helper */}
       <ScreenshotCapture glRef={screenshotGlRef} />
+
+      {/* Shadow map initialization */}
+      <ShadowSetup />
     </>
   );
+}
+
+// ─── Shadow Setup ───────────────────────────────────────────────────
+
+function ShadowSetup() {
+  const { gl } = useThree();
+  const simulationResults = useEditorStore((s) => s.simulationResults);
+
+  useEffect(() => {
+    if (simulationResults) {
+      configureShadows(gl);
+    }
+  }, [gl, simulationResults]);
+
+  return null;
 }
 
 // ─── Viewport3D (exported) ──────────────────────────────────────────────
@@ -989,6 +1025,7 @@ export function Viewport3D() {
           powerPreference: 'high-performance',
         }}
         dpr={[1, 2]}
+        shadows
         style={{ background: '#030810' }}
         onPointerMissed={() => {
           useEditorStore.getState().clearSelection();
