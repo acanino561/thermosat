@@ -12,6 +12,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "npx tsx src/scripts/seed-materials.ts",
     "test:solver": "npx tsx src/scripts/test-solver.ts",
+    "test:solver-v2": "npx tsx src/scripts/test-solver-v2.ts",
+    "test:benchmarks": "npx tsx src/scripts/run-all-benchmarks.ts",
     "postinstall": "cp node_modules/occt-import-js/dist/occt-import-js.wasm public/wasm/ && cp node_modules/occt-import-js/dist/occt-import-js.js public/wasm/"
   },
   "dependencies": {
