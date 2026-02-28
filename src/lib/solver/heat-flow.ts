@@ -6,6 +6,7 @@ import {
   type ThermalNetwork,
   type TimeValuePair,
 } from './types';
+import { computeHeatPipeFlow, interpolateGeff } from './heat-pipe';
 
 /**
  * Compute linear conduction heat flow from nodeFrom to nodeTo.
@@ -66,6 +67,12 @@ export function computeConductorFlow(
       return computeRadiationFlow(conductor, tFrom, tTo);
     case 'contact':
       return computeContactFlow(conductor, tFrom, tTo);
+    case 'heat_pipe':
+      return computeHeatPipeFlow(
+        conductor.conductanceData?.points ?? null,
+        tFrom,
+        tTo,
+      );
   }
 }
 
@@ -344,6 +351,13 @@ export function solveArithmeticNodes(
             Math.pow(tAvg, 3);
           sumRadNumerator += radG * tOther;
           sumRadDenominator += radG;
+        } else if (conductor.conductorType === 'heat_pipe') {
+          // Heat pipe: temperature-dependent conductance
+          const tNode = temperatures.get(nodeId) ?? 293;
+          const tAvgHp = (tNode + tOther) / 2;
+          const gEff = interpolateGeff(conductor.conductanceData?.points ?? null, tAvgHp);
+          sumG += gEff;
+          sumGT += gEff * tOther;
         } else {
           // Linear or contact
           sumG += conductor.conductance;

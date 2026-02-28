@@ -24,6 +24,7 @@ export const conductorTypeEnum = pgEnum('conductor_type', [
   'linear',
   'radiation',
   'contact',
+  'heat_pipe',
 ]);
 
 export const heatLoadTypeEnum = pgEnum('heat_load_type', [
@@ -251,12 +252,22 @@ export const conductors = pgTable(
     area: doublePrecision('area'), // m² for radiation
     viewFactor: doublePrecision('view_factor'), // F for radiation
     emissivity: doublePrecision('emissivity'), // effective ε for radiation
+    conductanceData: jsonb('conductance_data').$type<ConductanceData>(), // for heat_pipe
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
     modelIdIdx: index('conductors_model_id_idx').on(table.modelId),
   }),
 );
+
+export interface ConductanceDataPoint {
+  temperature: number; // K
+  conductance: number; // W/K
+}
+
+export interface ConductanceData {
+  points: ConductanceDataPoint[];
+}
 
 export interface TimeValuePair {
   time: number;

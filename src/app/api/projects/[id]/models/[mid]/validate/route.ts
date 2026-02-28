@@ -158,6 +158,17 @@ export async function POST(
             elementName: cond.name,
           });
         }
+      } else if (cond.conductorType === 'heat_pipe') {
+        const data = (cond as Record<string, unknown>).conductanceData as { points: Array<{ temperature: number; conductance: number }> } | null;
+        if (!data || !data.points || data.points.length < 2) {
+          warnings.push({
+            type: 'warning',
+            category: 'conductor',
+            message: `Heat pipe conductor "${cond.name}" requires at least 2 conductance data points`,
+            elementId: cond.id,
+            elementName: cond.name,
+          });
+        }
       }
     }
 

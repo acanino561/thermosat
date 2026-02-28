@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useEditorStore, type Conductor } from '@/lib/stores/editor-store';
+import { Button } from '@/components/ui/button';
+import { useEditorStore, type Conductor, type ConductanceDataPoint } from '@/lib/stores/editor-store';
 import { useUnits } from '@/lib/hooks/use-units';
 import type { QuantityType } from '@/lib/units';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface ConductorPropertiesProps {
   conductor: Conductor;
@@ -81,6 +84,52 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
     handleChange(field, siValue);
   };
 
+  // ── Heat Pipe conductance data helpers ──
+
+  const points: ConductanceDataPoint[] = useMemo(
+    () => conductor.conductanceData?.points ?? [
+      { temperature: 250, conductance: 50 },
+      { temperature: 350, conductance: 50 },
+    ],
+    [conductor.conductanceData],
+  );
+
+  const updatePoints = (newPoints: ConductanceDataPoint[]) => {
+    // Sort ascending by temperature
+    const sorted = [...newPoints].sort((a, b) => a.temperature - b.temperature);
+    updateConductor(conductor.id, {
+      conductanceData: { points: sorted },
+    });
+  };
+
+  const handlePointChange = (index: number, field: 'temperature' | 'conductance', raw: string) => {
+    const val = parseFloat(raw);
+    if (isNaN(val)) return;
+    if (field === 'conductance' && val <= 0) return;
+
+    const newPoints = [...points];
+    newPoints[index] = { ...newPoints[index], [field]: val };
+    updatePoints(newPoints);
+  };
+
+  const addPoint = () => {
+    if (points.length >= 20) return;
+    const lastT = points[points.length - 1]?.temperature ?? 300;
+    updatePoints([...points, { temperature: lastT + 50, conductance: 50 }]);
+  };
+
+  const removePoint = (index: number) => {
+    if (points.length <= 2) return;
+    const newPoints = points.filter((_, i) => i !== index);
+    updatePoints(newPoints);
+  };
+
+  // Check for duplicate temperatures
+  const hasDuplicateTemps = useMemo(() => {
+    const temps = points.map((p) => p.temperature);
+    return new Set(temps).size !== temps.length;
+  }, [points]);
+
   const FieldError = ({ field }: { field: string }) =>
     errors[field] ? <p className="text-xs text-red-400 mt-1">{errors[field]}</p> : null;
 
@@ -112,7 +161,7 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
         </div>
       </div>
 
-      {conductor.conductorType !== 'radiation' && (
+      {(conductor.conductorType === 'linear' || conductor.conductorType === 'contact') && (
         <div className="space-y-2">
           <Label htmlFor="cond-g">Conductance ({label('Conductance')})</Label>
           <Input
@@ -182,6 +231,98 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
             </div>
           </div>
         </>
+      )}
+
+      {conductor.conductorType === 'heat_pipe' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>G_eff vs Temperature</Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={addPoint}
+              disabled={points.length >= 20}
+              className="h-7 text-xs gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              Add Point
+            </Button>
+          </div>
+
+          {hasDuplicateTemps && (
+            <p className="text-xs text-red-400">Temperatures must be unique</p>
+          )}
+
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {points.map((point, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                <Input
+                  type="number"
+                  value={point.temperature}
+                  onChange={(e) => handlePointChange(idx, 'temperature', e.target.value)}
+                  className="bg-white/5 h-7 text-xs"
+                  placeholder="T (K)"
+                />
+                <Input
+                  type="number"
+                  value={point.conductance}
+                  onChange={(e) => handlePointChange(idx, 'conductance', e.target.value)}
+                  className="bg-white/5 h-7 text-xs"
+                  placeholder="G (W/K)"
+                  min="0"
+                  step="0.1"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removePoint(idx)}
+                  disabled={points.length <= 2}
+                  className="h-7 w-7 p-0"
+                >
+                  <Trash2 className="h-3 w-3 text-red-400" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-xs text-muted-foreground grid grid-cols-[1fr_1fr_auto] gap-2 px-1">
+            <span>Temperature (K)</span>
+            <span>Conductance (W/K)</span>
+            <span className="w-7" />
+          </div>
+
+          {/* G_eff vs T chart preview */}
+          {points.length >= 2 && (
+            <div className="h-32 w-full mt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={points} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis
+                    dataKey="temperature"
+                    tick={{ fontSize: 10, fill: '#888' }}
+                    label={{ value: 'T (K)', position: 'insideBottom', offset: -2, fontSize: 10, fill: '#888' }}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#888' }}
+                    label={{ value: 'G (W/K)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#888' }}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333', fontSize: 11 }}
+                    labelFormatter={(v) => `${v} K`}
+                    formatter={(v: number | undefined) => [`${(v ?? 0).toFixed(2)} W/K`, 'G_eff']}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="conductance"
+                    stroke="#06b6d4"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#06b6d4' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -19,16 +19,26 @@ export interface ThermalNode {
   y?: number;
 }
 
+export interface ConductanceDataPoint {
+  temperature: number;
+  conductance: number;
+}
+
+export interface ConductanceData {
+  points: ConductanceDataPoint[];
+}
+
 export interface Conductor {
   id: string;
   name: string;
-  conductorType: 'linear' | 'radiation' | 'contact';
+  conductorType: 'linear' | 'radiation' | 'contact' | 'heat_pipe';
   nodeFromId: string;
   nodeToId: string;
   conductance?: number | null;
   area?: number | null;
   viewFactor?: number | null;
   emissivity?: number | null;
+  conductanceData?: ConductanceData | null;
 }
 
 export interface HeatLoad {

@@ -31,13 +31,14 @@ interface DbNode {
 interface DbConductor {
   id: string;
   name: string;
-  conductorType: 'linear' | 'radiation' | 'contact';
+  conductorType: 'linear' | 'radiation' | 'contact' | 'heat_pipe';
   nodeFromId: string;
   nodeToId: string;
   conductance: number | null;
   area: number | null;
   viewFactor: number | null;
   emissivity: number | null;
+  conductanceData?: { points: Array<{ temperature: number; conductance: number }> } | null;
 }
 
 interface DbHeatLoad {
@@ -110,6 +111,7 @@ export function buildThermalNetwork(
     area: c.area ?? 0,
     viewFactor: c.viewFactor ?? 0,
     emissivity: c.emissivity ?? 0,
+    conductanceData: c.conductanceData ?? null,
   }));
 
   // Convert DB heat loads to solver heat loads

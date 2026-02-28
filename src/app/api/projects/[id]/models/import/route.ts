@@ -36,13 +36,14 @@ interface VxmNode {
 interface VxmConductor {
   id: string;
   name: string;
-  conductorType: 'linear' | 'radiation' | 'contact';
+  conductorType: 'linear' | 'radiation' | 'contact' | 'heat_pipe';
   nodeFromId: string;
   nodeToId: string;
   conductance?: number | null;
   area?: number | null;
   viewFactor?: number | null;
   emissivity?: number | null;
+  conductanceData?: { points: Array<{ temperature: number; conductance: number }> } | null;
 }
 
 interface VxmHeatLoad {
@@ -160,6 +161,7 @@ export async function POST(
             area: c.area ?? null,
             viewFactor: c.viewFactor ?? null,
             emissivity: c.emissivity ?? null,
+            conductanceData: c.conductanceData ?? null,
           })),
       );
     }

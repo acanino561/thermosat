@@ -27,7 +27,7 @@ export interface SolverNode {
 
 // ── Conductor Types ─────────────────────────────────────────────────────────
 
-export type ConductorType = 'linear' | 'radiation' | 'contact';
+export type ConductorType = 'linear' | 'radiation' | 'contact' | 'heat_pipe';
 
 export interface SolverConductor {
   id: string;
@@ -39,6 +39,7 @@ export interface SolverConductor {
   area: number; // m² for radiation
   viewFactor: number; // F for radiation
   emissivity: number; // effective ε for radiation
+  conductanceData?: { points: Array<{ temperature: number; conductance: number }> } | null;
 }
 
 // ── Heat Load Types ─────────────────────────────────────────────────────────

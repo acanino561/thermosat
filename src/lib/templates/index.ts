@@ -17,7 +17,7 @@ export interface TemplateNode {
 
 export interface TemplateConductor {
   name: string;
-  conductorType: 'linear' | 'radiation' | 'contact';
+  conductorType: 'linear' | 'radiation' | 'contact' | 'heat_pipe';
   fromNode: string; // references node name
   toNode: string;
   conductance?: number; // W/K

@@ -83,6 +83,7 @@ export async function POST(
         area: parsed.data.area ?? null,
         viewFactor: parsed.data.viewFactor ?? null,
         emissivity: parsed.data.emissivity ?? null,
+        conductanceData: parsed.data.conductanceData ?? null,
       })
       .returning();
 
