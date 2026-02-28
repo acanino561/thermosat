@@ -11,7 +11,7 @@ const themes = [
 ] as const;
 
 type ThemeId = typeof themes[number]['id'];
-const STORAGE_KEY = 'thermosat-theme';
+const STORAGE_KEY = 'verixos-theme';
 
 export function PaletteSwitcher() {
   const [activeTheme, setActiveTheme] = useState<ThemeId>('mission-control');

@@ -34,8 +34,8 @@ export function Logo({ className, size = 'md', showText = true }: LogoProps) {
           'font-mono font-semibold tracking-tight',
           textSizes[size],
         )}>
-          <span style={{ color: 'var(--tc-text)' }}>THERMO</span>
-          <span style={{ color: 'var(--tc-accent)' }}>SAT</span>
+          <span style={{ color: 'var(--tc-text)' }}>VERI</span>
+          <span style={{ color: 'var(--tc-accent)' }}>XOS</span>
         </span>
       )}
     </div>

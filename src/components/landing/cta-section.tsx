@@ -41,21 +41,21 @@ export function CtaSection() {
           >
             <div className="flex items-center gap-3 mb-4 pb-3" style={{ borderBottom: '1px solid var(--tc-border)' }}>
               <span className="data-label">TERMINAL</span>
-              <span className="font-mono text-[9px]" style={{ color: 'var(--tc-text-dim)' }}>thermosat-cli v2.1.0</span>
+              <span className="font-mono text-[9px]" style={{ color: 'var(--tc-text-dim)' }}>verixos-cli v2.1.0</span>
             </div>
             <div style={{ color: 'var(--tc-text-muted)' }}>
               <span className="text-accent">$</span>{' '}
-              <span style={{ color: 'var(--tc-text-secondary)' }}>thermosat init</span>{' '}
+              <span style={{ color: 'var(--tc-text-secondary)' }}>verixos init</span>{' '}
               --orbit LEO --altitude 408 --inclination 51.64
             </div>
             <div className="mt-1" style={{ color: 'var(--tc-text-muted)' }}>
               <span className="text-accent">$</span>{' '}
-              <span style={{ color: 'var(--tc-text-secondary)' }}>thermosat run</span>{' '}
+              <span style={{ color: 'var(--tc-text-secondary)' }}>verixos run</span>{' '}
               --type transient --duration 5400 --timestep adaptive
             </div>
             <div className="mt-1" style={{ color: 'var(--tc-text-muted)' }}>
               <span className="text-accent">$</span>{' '}
-              <span style={{ color: 'var(--tc-text-secondary)' }}>thermosat export</span>{' '}
+              <span style={{ color: 'var(--tc-text-secondary)' }}>verixos export</span>{' '}
               --format csv --nodes all
             </div>
             <div className="mt-3 flex items-center gap-2">

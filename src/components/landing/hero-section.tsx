@@ -195,9 +195,9 @@ export function HeroSection() {
             className="mt-6 text-base max-w-lg leading-relaxed font-sans"
             style={{ color: 'var(--tc-text-secondary)' }}
           >
-            Cloud-native thermal simulation for orbital systems. 
-            Build models, run transient analyses, visualize temperature distributions. 
-            No licenses. No installs. Engineering-grade accuracy.
+            Engineering-grade spacecraft thermal analysis — fast, accurate, cloud-native. 
+            3D CAD import, orbital environment solver, V&V benchmarks, and multi-format export. 
+            Built for SmallSat startups, university teams, and NewSpace engineers.
           </motion.p>
 
           {/* CTAs */}

@@ -19,11 +19,16 @@ const plexSans = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'ThermoSat — Spacecraft Thermal Analysis',
-    template: '%s | ThermoSat',
+    default: 'Verixos — Spacecraft Thermal Analysis',
+    template: '%s | Verixos',
   },
   description:
-    'Cloud-native spacecraft thermal analysis platform. Build thermal models, run simulations, and visualize results — all in your browser.',
+    'Professional thermal analysis software for spacecraft engineers. 3D CAD import, orbital solver, V&V benchmarks.',
+  openGraph: {
+    title: 'Verixos — Spacecraft Thermal Analysis',
+    description: 'Professional thermal analysis software for spacecraft engineers. 3D CAD import, orbital solver, V&V benchmarks.',
+    type: 'website',
+  },
   keywords: [
     'spacecraft',
     'thermal analysis',

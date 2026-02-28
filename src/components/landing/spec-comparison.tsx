@@ -5,24 +5,24 @@ import { useRef } from 'react';
 
 interface SpecRow {
   feature: string;
-  thermosat: string;
+  verixos: string;
   legacy: string;
   highlight?: boolean;
 }
 
 const specs: SpecRow[] = [
-  { feature: 'DEPLOYMENT', thermosat: 'Browser — instant', legacy: 'Desktop install — weeks', highlight: true },
-  { feature: 'LICENSING', thermosat: 'Free tier available', legacy: '$15K–$50K+ / seat / yr', highlight: true },
-  { feature: 'SETUP TIME', thermosat: '< 2 minutes', legacy: '1–4 weeks' },
-  { feature: 'COLLABORATION', thermosat: 'Real-time multi-user', legacy: 'Email files' },
-  { feature: 'API ACCESS', thermosat: 'REST API + SDKs', legacy: 'None or limited' },
-  { feature: 'CI/CD', thermosat: 'Native integration', legacy: 'Not available' },
-  { feature: 'ORBIT ENGINE', thermosat: 'Built-in, automatic', legacy: 'Built-in' },
-  { feature: 'TRANSIENT', thermosat: 'Backward Euler / CN', legacy: 'Available' },
-  { feature: 'MATERIAL DB', thermosat: '500+ w/ BOL/EOL', legacy: 'Varies' },
-  { feature: 'VISUAL BUILDER', thermosat: 'Drag & drop canvas', legacy: 'Varies' },
-  { feature: 'VERSION CONTROL', thermosat: 'Git-like history', legacy: 'Manual backups' },
-  { feature: 'DATA EXPORT', thermosat: 'JSON, CSV, HDF5', legacy: 'Proprietary formats' },
+  { feature: 'DEPLOYMENT', verixos: 'Browser — instant', legacy: 'Desktop install — weeks', highlight: true },
+  { feature: 'LICENSING', verixos: 'Free tier available', legacy: '$15K–$50K+ / seat / yr', highlight: true },
+  { feature: 'SETUP TIME', verixos: '< 2 minutes', legacy: '1–4 weeks' },
+  { feature: 'COLLABORATION', verixos: 'Real-time multi-user', legacy: 'Email files' },
+  { feature: 'API ACCESS', verixos: 'REST API + SDKs', legacy: 'None or limited' },
+  { feature: 'CI/CD', verixos: 'Native integration', legacy: 'Not available' },
+  { feature: 'ORBIT ENGINE', verixos: 'Built-in, automatic', legacy: 'Built-in' },
+  { feature: 'TRANSIENT', verixos: 'Backward Euler / CN', legacy: 'Available' },
+  { feature: 'MATERIAL DB', verixos: '500+ w/ BOL/EOL', legacy: 'Varies' },
+  { feature: 'VISUAL BUILDER', verixos: 'Drag & drop canvas', legacy: 'Varies' },
+  { feature: 'VERSION CONTROL', verixos: 'Git-like history', legacy: 'Manual backups' },
+  { feature: 'DATA EXPORT', verixos: 'JSON, CSV, HDF5', legacy: 'Proprietary formats' },
 ];
 
 export function SpecComparison() {
@@ -94,7 +94,7 @@ export function SpecComparison() {
             >
               <span style={{ color: 'var(--tc-text-muted)' }}>{row.feature}</span>
               <span style={{ color: row.highlight ? 'var(--tc-accent)' : 'var(--tc-text)' }}>
-                {row.thermosat}
+                {row.verixos}
               </span>
               <span style={{ color: 'var(--tc-text-muted)' }}>{row.legacy}</span>
             </motion.div>

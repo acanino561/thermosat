@@ -66,7 +66,7 @@ export async function GET() {
     return new NextResponse(JSON.stringify(exportData, null, 2), {
       headers: {
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="thermosat-export-${user.id}.json"`,
+        'Content-Disposition': `attachment; filename="verixos-export-${user.id}.json"`,
       },
     });
   } catch (error) {

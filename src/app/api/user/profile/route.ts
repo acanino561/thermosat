@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { db } from '@/lib/db/client';
-import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { users, projects } from '@/lib/db/schema';
+import { eq, count } from 'drizzle-orm';
 import { z } from 'zod';
 
 export async function GET() {
@@ -32,7 +32,12 @@ export async function GET() {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
-  return NextResponse.json(user);
+  const [{ projectCount }] = await db
+    .select({ projectCount: count() })
+    .from(projects)
+    .where(eq(projects.userId, user.id));
+
+  return NextResponse.json({ ...user, projectCount });
 }
 
 const updateSchema = z.object({

@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.EMAIL_FROM ?? 'ThermoSat <noreply@thermosat.app>';
+const FROM_EMAIL = process.env.EMAIL_FROM ?? 'Verixos <noreply@verixos.app>';
 
 export async function sendVerificationEmail(email: string, token: string) {
   const url = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
@@ -10,9 +10,9 @@ export async function sendVerificationEmail(email: string, token: string) {
   await resend.emails.send({
     from: FROM_EMAIL,
     to: email,
-    subject: 'Verify your ThermoSat email',
+    subject: 'Verify your Verixos email',
     html: `
-      <h2>Welcome to ThermoSat</h2>
+      <h2>Welcome to Verixos</h2>
       <p>Click the link below to verify your email address:</p>
       <a href="${url}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;">
         Verify Email
@@ -29,7 +29,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   await resend.emails.send({
     from: FROM_EMAIL,
     to: email,
-    subject: 'Reset your ThermoSat password',
+    subject: 'Reset your Verixos password',
     html: `
       <h2>Password Reset</h2>
       <p>Click the link below to reset your password:</p>

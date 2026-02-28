@@ -136,7 +136,7 @@ export function Sidebar() {
                 className="flex-1 min-w-0 overflow-hidden"
               >
                 <div className="text-sm font-medium truncate">Thermal Engineer</div>
-                <div className="text-xs text-muted-foreground truncate">engineer@thermosat.io</div>
+                <div className="text-xs text-muted-foreground truncate">engineer@verixos.io</div>
               </motion.div>
             )}
           </AnimatePresence>
