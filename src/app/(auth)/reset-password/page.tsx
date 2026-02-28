@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Logo } from '@/components/shared/logo';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const params = useSearchParams();
   const token = params.get('token');
   const email = params.get('email');
@@ -184,5 +184,13 @@ export default function ResetPasswordPage() {
         </p>
       </div>
     </motion.div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-md mx-auto"><div className="glass-strong rounded-2xl p-8 text-center"><Loader2 className="h-8 w-8 animate-spin text-blue-400 mx-auto" /></div></div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

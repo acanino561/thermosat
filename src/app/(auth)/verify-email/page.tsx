@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const params = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
@@ -78,5 +78,13 @@ export default function VerifyEmailPage() {
         )}
       </div>
     </motion.div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-md mx-auto"><div className="glass-strong rounded-2xl p-8 text-center"><Loader2 className="h-8 w-8 animate-spin text-blue-400 mx-auto" /></div></div>}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
