@@ -348,7 +348,7 @@ export interface NodeSummary {
 }
 
 /** Typical operational limits for CubeSat components (K). */
-const operationalLimits: Record<string, { min: number; max: number }> = {
+export const operationalLimits: Record<string, { min: number; max: number }> = {
   '+X Panel': { min: 173, max: 398 },
   '-X Panel': { min: 173, max: 398 },
   '+Y Panel (Solar Array)': { min: 173, max: 398 },
@@ -444,6 +444,54 @@ export function computeEnergyBalance(): EnergyBalance {
 }
 
 export const energyBalance = computeEnergyBalance();
+
+// ─── Convergence diagnostics ─────────────────────────────────────────
+
+export interface ConvergenceDiagnostics {
+  /** Iteration count per timestep */
+  iterationsPerStep: { time: number; iterations: number }[];
+  /** Adaptive timestep history */
+  timeStepHistory: { time: number; dt: number }[];
+  /** Cumulative energy balance over time */
+  cumulativeEnergyBalance: { time: number; energyIn: number; energyOut: number; stored: number; error: number }[];
+}
+
+function computeConvergenceDiagnostics(): ConvergenceDiagnostics {
+  const iterationsPerStep: { time: number; iterations: number }[] = [];
+  const timeStepHistory: { time: number; dt: number }[] = [];
+  const cumulativeEnergyBalance: { time: number; energyIn: number; energyOut: number; stored: number; error: number }[] = [];
+
+  let cumIn = 0;
+  let cumOut = 0;
+
+  for (let i = 0; i < N_POINTS; i++) {
+    const t = i * DT;
+    // Simulate iteration counts — more iterations during eclipse transitions
+    const phase = ((t % ORBIT_PERIOD) + ORBIT_PERIOD) % ORBIT_PERIOD;
+    const nearTransition = Math.abs(phase - SUNLIGHT_DURATION) < 3 || phase < 3;
+    const iters = nearTransition ? Math.floor(4 + Math.random() * 4) : Math.floor(2 + Math.random() * 2);
+    iterationsPerStep.push({ time: t, iterations: iters });
+
+    // Adaptive timestep — smaller near transitions
+    const dtAdaptive = nearTransition ? DT * 0.5 : DT;
+    timeStepHistory.push({ time: t, dt: dtAdaptive });
+
+    // Cumulative energy
+    const dtSec = DT * 60;
+    const sf = isInEclipse(t) ? 0 : 1;
+    cumIn += sf * 1361 * 0.06 * 0.92 * dtSec;
+    // Approximate radiation from average node temp
+    const avgTemp = nodeProfiles.slice(0, 6).reduce((s, p) => s + p.temperatures[Math.min(i, p.temperatures.length - 1)], 0) / 6;
+    cumOut += 5.67e-8 * 0.85 * 0.36 * Math.pow(avgTemp, 4) * dtSec;
+    const stored = cumIn - cumOut;
+    const error = cumIn > 0 ? Math.abs(stored) / cumIn * 100 : 0;
+    cumulativeEnergyBalance.push({ time: t, energyIn: cumIn, energyOut: cumOut, stored, error });
+  }
+
+  return { iterationsPerStep, timeStepHistory, cumulativeEnergyBalance };
+}
+
+export const convergenceDiagnostics = computeConvergenceDiagnostics();
 
 // ─── Exports for store integration ───────────────────────────────────
 

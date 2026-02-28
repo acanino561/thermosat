@@ -199,6 +199,19 @@ interface EditorState {
   simulationStatus: 'idle' | 'running' | 'completed' | 'failed';
   simulationResults: SimulationResults | null;
 
+  // Results viewer state
+  /** Current timestep for cursor sync between chart and 3D viewport (seconds) */
+  currentTimestep: number;
+  comparisonResults: SimulationResults | null;
+  comparisonRunId: string | null;
+  nodeLimits: Record<string, { minTemp: number; maxTemp: number }>;
+
+  // Results viewer actions
+  setCurrentTimestep: (timestep: number) => void;
+  setComparisonResults: (results: SimulationResults | null) => void;
+  setComparisonRunId: (runId: string | null) => void;
+  setNodeLimits: (limits: Record<string, { minTemp: number; maxTemp: number }>) => void;
+
   // Actions
   loadModel: (projectId: string, modelId: string) => Promise<void>;
   save: (snapshotDescription?: string) => Promise<void>;
@@ -318,6 +331,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   simulationStatus: 'idle',
   simulationResults: null,
+  currentTimestep: 0,
+  comparisonResults: null,
+  comparisonRunId: null,
+  nodeLimits: {},
+
+  setCurrentTimestep: (index) => set({ currentTimestep: index }),
+  setComparisonResults: (results) => set({ comparisonResults: results }),
+  setComparisonRunId: (runId) => set({ comparisonRunId: runId }),
+  setNodeLimits: (limits) => set({ nodeLimits: limits }),
 
   // Viewport polish
   viewportState: {

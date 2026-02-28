@@ -115,7 +115,7 @@ function TemperatureChart() {
               color: '#e2e8f0',
             }}
             labelFormatter={(v) => `t = ${Number(v).toFixed(1)} min`}
-            formatter={(value, name) => [`${Number(value).toFixed(1)}K`, name]}
+            formatter={((value: any, name: any) => [`${Number(value).toFixed(1)}K`, name]) as any}
           />
           {nodeProfiles.filter(p => p.name !== 'Deep Space').map((np) => (
             <Line
@@ -206,7 +206,7 @@ function HeatFlowChart() {
               color: '#e2e8f0',
             }}
             labelFormatter={(v) => `t = ${Number(v).toFixed(1)} min`}
-            formatter={(value, name) => [`${Number(value).toFixed(3)}W`, name]}
+            formatter={((value: any, name: any) => [`${Number(value).toFixed(3)}W`, name]) as any}
           />
           {conductorFlows.map((cf) => (
             <Line

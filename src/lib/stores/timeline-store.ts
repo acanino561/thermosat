@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { TOTAL_TIME_MIN, NUM_POINTS, TIME_STEP_MIN } from '@/lib/demo/simulation-data';
+import { useEditorStore } from '@/lib/stores/editor-store';
 
 interface TimelineState {
   /** Current time in minutes */
@@ -54,5 +55,22 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
     const index = Math.min(Math.round(newTime / TIME_STEP_MIN), NUM_POINTS - 1);
     set({ currentTime: newTime, currentIndex: index });
+
+    // Sync to editor store for results viewer cursor
+    useEditorStore.getState().setCurrentTimestep(index);
   },
 }));
+
+// Sync editor store currentTimestep back to timeline when set externally (e.g. chart hover)
+let _prevEditorTimestep = 0;
+useEditorStore.subscribe((state) => {
+  const timestep = state.currentTimestep;
+  if (timestep !== _prevEditorTimestep) {
+    _prevEditorTimestep = timestep;
+    const timeMin = timestep * TIME_STEP_MIN;
+    const { currentIndex } = useTimelineStore.getState();
+    if (currentIndex !== timestep) {
+      useTimelineStore.setState({ currentTime: timeMin, currentIndex: timestep });
+    }
+  }
+});
