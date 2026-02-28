@@ -10,6 +10,7 @@ import {
   pgEnum,
   index,
   primaryKey,
+  customType,
 } from 'drizzle-orm/pg-core';
 
 // ── Enums ──────────────────────────────────────────────────────────────────
@@ -467,5 +468,59 @@ export const simulationResults = pgTable(
   },
   (table) => ({
     runIdIdx: index('simulation_results_run_id_idx').on(table.runId),
+  }),
+);
+
+// ── Custom Types ───────────────────────────────────────────────────────────
+
+const bytea = customType<{ data: Buffer; driverData: string }>({
+  dataType() {
+    return 'bytea';
+  },
+  toDriver(value: Buffer): string {
+    return `\\x${value.toString('hex')}`;
+  },
+  fromDriver(value: string): Buffer {
+    // Neon HTTP returns hex-encoded string with \x prefix
+    const hex = typeof value === 'string' && value.startsWith('\\x')
+      ? value.slice(2)
+      : typeof value === 'string' ? value : '';
+    return Buffer.from(hex, 'hex');
+  },
+});
+
+// ── Report Generation ──────────────────────────────────────────────────────
+
+export const reportStatusEnum = pgEnum('report_status', [
+  'generating',
+  'complete',
+  'failed',
+]);
+
+export const reports = pgTable(
+  'reports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    resultId: uuid('result_id')
+      .notNull()
+      .references(() => simulationRuns.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: reportStatusEnum('status').default('generating').notNull(),
+    errorMessage: text('error_message'),
+    pdfBuffer: bytea('pdf_buffer'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  },
+  (table) => ({
+    resultIdIdx: index('reports_result_id_idx').on(table.resultId),
+    userIdIdx: index('reports_user_id_idx').on(table.userId),
   }),
 );

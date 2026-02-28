@@ -1,0 +1,101 @@
+import { StyleSheet } from '@react-pdf/renderer';
+
+export const BRAND = {
+  primary: '#6366f1',
+  primaryLight: '#818cf8',
+  dark: '#0a0a1a',
+  white: '#ffffff',
+  gray50: '#f9fafb',
+  gray100: '#f3f4f6',
+  gray200: '#e5e7eb',
+  gray400: '#9ca3af',
+  gray600: '#4b5563',
+  gray800: '#1f2937',
+  green: '#22c55e',
+  amber: '#f59e0b',
+  red: '#ef4444',
+};
+
+export const styles = StyleSheet.create({
+  page: {
+    paddingTop: 60,
+    paddingBottom: 60,
+    paddingHorizontal: 40,
+    fontFamily: 'Helvetica',
+    fontSize: 10,
+    color: BRAND.gray800,
+  },
+  coverPage: {
+    padding: 0,
+    fontFamily: 'Helvetica',
+    backgroundColor: BRAND.dark,
+  },
+  header: {
+    position: 'absolute',
+    top: 15,
+    left: 40,
+    right: 40,
+    fontSize: 8,
+    color: BRAND.gray400,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND.gray200,
+    paddingBottom: 5,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 40,
+    right: 40,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    fontSize: 7,
+    color: BRAND.gray400,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Helvetica-Bold',
+    color: BRAND.primary,
+    marginBottom: 12,
+  },
+  subsectionTitle: {
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: BRAND.gray800,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  bodyText: {
+    fontSize: 10,
+    lineHeight: 1.5,
+    marginBottom: 6,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: BRAND.primary,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  tableHeaderCell: {
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    color: BRAND.white,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BRAND.gray200,
+  },
+  tableRowAlt: {
+    flexDirection: 'row',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    backgroundColor: BRAND.gray50,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BRAND.gray200,
+  },
+  tableCell: {
+    fontSize: 8,
+  },
+});
