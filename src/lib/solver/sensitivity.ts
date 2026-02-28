@@ -59,6 +59,7 @@ interface ParameterDef {
   parameterType: 'node_property' | 'conductor' | 'heat_load';
   parameterLabel: string;
   entityId: string;
+  baselineValue: number;
   getValue: () => number;
   apply: (nodes: DbNode[], conductors: DbConductor[], loads: DbHeatLoad[], value: number) => void;
 }
@@ -86,6 +87,7 @@ function collectParameters(
         parameterType: 'node_property',
         parameterLabel: `Solar Absorptivity — ${node.name}`,
         entityId: node.id,
+        baselineValue: node.absorptivity!,
         getValue: () => node.absorptivity!,
         apply: (ns, _cs, _ls, val) => {
           const n = ns.find(x => x.id === node.id);
@@ -100,6 +102,7 @@ function collectParameters(
         parameterType: 'node_property',
         parameterLabel: `IR Emissivity — ${node.name}`,
         entityId: node.id,
+        baselineValue: node.emissivity!,
         getValue: () => node.emissivity!,
         apply: (ns, _cs, _ls, val) => {
           const n = ns.find(x => x.id === node.id);
@@ -114,6 +117,7 @@ function collectParameters(
         parameterType: 'node_property',
         parameterLabel: `Capacitance — ${node.name}`,
         entityId: node.id,
+        baselineValue: node.capacitance!,
         getValue: () => node.capacitance!,
         apply: (ns, _cs, _ls, val) => {
           const n = ns.find(x => x.id === node.id);
@@ -128,6 +132,7 @@ function collectParameters(
         parameterType: 'node_property',
         parameterLabel: `Mass — ${node.name}`,
         entityId: node.id,
+        baselineValue: node.mass!,
         getValue: () => node.mass!,
         apply: (ns, _cs, _ls, val) => {
           const n = ns.find(x => x.id === node.id);
@@ -146,6 +151,7 @@ function collectParameters(
         parameterType: 'conductor',
         parameterLabel: `Conductance — ${cond.name}`,
         entityId: cond.id,
+        baselineValue: cond.conductance!,
         getValue: () => cond.conductance!,
         apply: (_ns, cs, _ls, val) => {
           const c = cs.find(x => x.id === cond.id);
@@ -161,6 +167,7 @@ function collectParameters(
         parameterType: 'conductor',
         parameterLabel: `View Factor — ${cond.name}`,
         entityId: cond.id,
+        baselineValue: cond.viewFactor!,
         getValue: () => cond.viewFactor!,
         apply: (_ns, cs, _ls, val) => {
           const c = cs.find(x => x.id === cond.id);
@@ -178,6 +185,7 @@ function collectParameters(
         parameterType: 'heat_load',
         parameterLabel: `Heat Load — ${load.name}`,
         entityId: load.id,
+        baselineValue: load.value!,
         getValue: () => load.value!,
         apply: (_ns, _cs, ls, val) => {
           const l = ls.find(x => x.id === load.id);
@@ -329,6 +337,7 @@ export async function computeSensitivityMatrix(
           nodeId,
           dT_dp,
           secondOrderEstimate: secondOrder,
+          baselineValue: param.baselineValue,
         });
       }
     }

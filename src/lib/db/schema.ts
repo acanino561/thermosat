@@ -431,6 +431,7 @@ export interface SensitivityEntry {
   nodeId: string;
   dT_dp: number;
   secondOrderEstimate: number;
+  baselineValue: number;
 }
 
 export const sensitivityMatrices = pgTable(
