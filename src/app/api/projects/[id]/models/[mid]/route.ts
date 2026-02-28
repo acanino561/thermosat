@@ -7,7 +7,7 @@ import {
   heatLoads,
   modelSnapshots,
 } from '@/lib/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { updateModelSchema } from '@/lib/validators/models';
 import {
   getAuthenticatedUser,
@@ -100,7 +100,11 @@ export async function PUT(
     if (!existing) return notFoundResponse('Model');
 
     // Check if this is a full model save (has nodes/conductors/heatLoads)
-    if (body.nodes && body.conductors && body.heatLoads) {
+    if (
+      Array.isArray(body.nodes) &&
+      Array.isArray(body.conductors) &&
+      Array.isArray(body.heatLoads)
+    ) {
       // Full model state save
       const snapshotDescription = (body.snapshotDescription as string) || 'Auto-save';
       const createSnapshot = body.createSnapshot !== false;
