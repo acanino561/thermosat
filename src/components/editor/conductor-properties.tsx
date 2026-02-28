@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,16 @@ import { useEditorStore, type Conductor, type ConductanceDataPoint } from '@/lib
 import { useUnits } from '@/lib/hooks/use-units';
 import type { QuantityType } from '@/lib/units';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Calculator, Loader2 } from 'lucide-react';
+import {
+  buildSurfaceData,
+  hasGeometryForConductor,
+  computeViewFactorAsync,
+  RAY_COUNTS,
+  type RayQuality,
+  type ViewFactorProgress,
+  type ViewFactorResult,
+} from '@/lib/cad/monte-carlo';
 
 interface ConductorPropertiesProps {
   conductor: Conductor;
@@ -18,8 +27,18 @@ interface ConductorPropertiesProps {
 export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
   const updateConductor = useEditorStore((s) => s.updateConductor);
   const nodes = useEditorStore((s) => s.nodes);
+  const cadGeometry = useEditorStore((s) => s.cadGeometry);
+  const surfaceNodeMappings = useEditorStore((s) => s.surfaceNodeMappings);
   const { label, display, parse, fmt } = useUnits();
   const [errors, setErrors] = useState<Record<string, string | null>>({});
+
+  // ── View factor computation state ──
+  const [vfComputing, setVfComputing] = useState(false);
+  const [vfProgress, setVfProgress] = useState<ViewFactorProgress | null>(null);
+  const [vfResult, setVfResult] = useState<ViewFactorResult | null>(null);
+  const [vfQuality, setVfQuality] = useState<RayQuality>('default');
+  const [vfError, setVfError] = useState<string | null>(null);
+  const [vfCancelFn, setVfCancelFn] = useState<(() => void) | null>(null);
 
   const fromNode = nodes.find((n) => n.id === conductor.nodeFromId);
   const toNode = nodes.find((n) => n.id === conductor.nodeToId);
@@ -230,6 +249,78 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
               <FieldError field="emissivity" />
             </div>
           </div>
+
+          {/* ── Compute View Factor from Geometry ── */}
+          <ViewFactorComputer
+            conductor={conductor}
+            cadGeometry={cadGeometry}
+            surfaceNodeMappings={surfaceNodeMappings}
+            vfComputing={vfComputing}
+            vfProgress={vfProgress}
+            vfResult={vfResult}
+            vfQuality={vfQuality}
+            vfError={vfError}
+            onQualityChange={setVfQuality}
+            onCompute={() => {
+              if (!cadGeometry) return;
+              const surfaces = buildSurfaceData(cadGeometry, surfaceNodeMappings);
+              const surfA = surfaces.find((s) => s.nodeId === conductor.nodeFromId);
+              const surfB = surfaces.find((s) => s.nodeId === conductor.nodeToId);
+              if (!surfA || !surfB) return;
+
+              setVfComputing(true);
+              setVfProgress(null);
+              setVfResult(null);
+              setVfError(null);
+
+              const { promise, cancel } = computeViewFactorAsync(
+                surfA,
+                surfB,
+                surfaces,
+                RAY_COUNTS[vfQuality],
+                conductor.id,
+                (progress) => setVfProgress(progress),
+              );
+
+              setVfCancelFn(() => cancel);
+
+              promise
+                .then((result) => {
+                  setVfResult(result);
+                  // Update the conductor's view factor in local store
+                  updateConductor(conductor.id, { viewFactor: result.viewFactor });
+                  // Persist to DB
+                  const pathMatch = window.location.pathname.match(
+                    /\/projects\/([^/]+)\/models\/([^/]+)/,
+                  );
+                  if (pathMatch) {
+                    fetch(
+                      `/api/projects/${pathMatch[1]}/models/${pathMatch[2]}/view-factors`,
+                      {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          conductorId: conductor.id,
+                          viewFactor: result.viewFactor,
+                          nRays: result.nRays,
+                          duration: result.duration,
+                        }),
+                      },
+                    ).catch(console.error);
+                  }
+                })
+                .catch((err) => setVfError(err.message))
+                .finally(() => {
+                  setVfComputing(false);
+                  setVfCancelFn(null);
+                });
+            }}
+            onCancel={() => {
+              vfCancelFn?.();
+              setVfComputing(false);
+              setVfCancelFn(null);
+            }}
+          />
         </>
       )}
 
@@ -323,6 +414,129 @@ export function ConductorProperties({ conductor }: ConductorPropertiesProps) {
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── View Factor Computation Sub-Component ───────────────────────────────────
+
+interface ViewFactorComputerProps {
+  conductor: Conductor;
+  cadGeometry: import('@/lib/stores/editor-store').CadGeometry | null;
+  surfaceNodeMappings: import('@/lib/stores/editor-store').SurfaceNodeMapping[];
+  vfComputing: boolean;
+  vfProgress: ViewFactorProgress | null;
+  vfResult: ViewFactorResult | null;
+  vfQuality: RayQuality;
+  vfError: string | null;
+  onQualityChange: (q: RayQuality) => void;
+  onCompute: () => void;
+  onCancel: () => void;
+}
+
+function ViewFactorComputer({
+  conductor,
+  cadGeometry,
+  surfaceNodeMappings,
+  vfComputing,
+  vfProgress,
+  vfResult,
+  vfQuality,
+  vfError,
+  onQualityChange,
+  onCompute,
+  onCancel,
+}: ViewFactorComputerProps) {
+  const hasGeometry = useMemo(() => {
+    if (!cadGeometry) return false;
+    const surfaces = buildSurfaceData(cadGeometry, surfaceNodeMappings);
+    return hasGeometryForConductor(conductor.nodeFromId, conductor.nodeToId, surfaces);
+  }, [cadGeometry, surfaceNodeMappings, conductor.nodeFromId, conductor.nodeToId]);
+
+  return (
+    <div className="p-3 rounded-lg bg-white/5 space-y-2 mt-2">
+      <p className="text-xs font-medium text-muted-foreground">
+        Compute from Geometry
+      </p>
+
+      {!cadGeometry ? (
+        <p className="text-xs text-muted-foreground italic">
+          Import CAD geometry and assign surfaces to nodes first
+        </p>
+      ) : !hasGeometry ? (
+        <p className="text-xs text-muted-foreground italic">
+          Both connected nodes need surfaces assigned from CAD geometry
+        </p>
+      ) : (
+        <>
+          {/* Quality selector */}
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">Rays:</Label>
+            {(['fast', 'default', 'high'] as RayQuality[]).map((q) => (
+              <button
+                key={q}
+                onClick={() => onQualityChange(q)}
+                disabled={vfComputing}
+                className={`text-xs px-2 py-0.5 rounded ${
+                  vfQuality === q
+                    ? 'bg-accent-cyan text-black font-medium'
+                    : 'bg-white/10 text-muted-foreground hover:bg-white/20'
+                }`}
+              >
+                {q === 'fast' ? '10K' : q === 'default' ? '100K' : '1M'}
+              </button>
+            ))}
+          </div>
+
+          {/* Compute / Cancel button */}
+          {vfComputing ? (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin text-accent-cyan" />
+                <span className="text-xs text-muted-foreground">
+                  Computing... {vfProgress?.percent ?? 0}%
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onCancel}
+                  className="h-6 text-xs text-red-400 ml-auto"
+                >
+                  Cancel
+                </Button>
+              </div>
+              <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent-cyan transition-all duration-300"
+                  style={{ width: `${vfProgress?.percent ?? 0}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCompute}
+              className="h-7 text-xs gap-1 w-full"
+            >
+              <Calculator className="h-3 w-3" />
+              Compute view factor
+            </Button>
+          )}
+
+          {/* Result display */}
+          {vfResult && !vfComputing && (
+            <p className="text-xs text-accent-cyan">
+              Computed: {vfResult.viewFactor.toFixed(4)} ({(vfResult.nRays / 1000).toFixed(0)}K rays, {vfResult.duration.toFixed(1)}s)
+            </p>
+          )}
+
+          {/* Error display */}
+          {vfError && !vfComputing && (
+            <p className="text-xs text-red-400">{vfError}</p>
+          )}
+        </>
       )}
     </div>
   );
