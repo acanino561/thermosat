@@ -30,6 +30,7 @@ import { useEditorStore, type AutoSaveStatus } from '@/lib/stores/editor-store';
 import { AddNodeDialog } from './add-node-dialog';
 import { AddConductorDialog } from './add-conductor-dialog';
 import { AddHeatLoadDialog } from './add-heat-load-dialog';
+import { ImportCadButton } from './import-cad-button';
 import { HistoryPanel } from './history-panel';
 import { VersionHistory } from './version-history';
 import Link from 'next/link';
@@ -166,6 +167,11 @@ export function Toolbar({ projectId }: ToolbarProps) {
         <AddNodeDialog />
         <AddConductorDialog />
         <AddHeatLoadDialog />
+
+        <Separator orientation="vertical" className="h-6 mx-2" />
+
+        {/* CAD Import */}
+        <ImportCadButton />
 
         <Separator orientation="vertical" className="h-6 mx-2" />
 

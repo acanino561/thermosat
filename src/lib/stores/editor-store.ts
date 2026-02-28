@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { ColorScale, ThermalRange } from '@/lib/thermal-colors';
 
 // Types matching the backend schema
 export interface ThermalNode {
@@ -93,6 +94,61 @@ const DEBOUNCE_MS = 500;
 const AUTO_SAVE_DEBOUNCE_MS = 30_000; // 30 seconds
 const SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
+// ─── CAD Geometry Types ───────────────────────────────────────────────
+
+export interface CadFace {
+  id: string;
+  name: string;
+  positions: Float32Array;
+  normals: Float32Array;
+  indices: Uint32Array;
+  color: [number, number, number];
+  surfaceArea: number;
+}
+
+export interface CadGeometry {
+  fileName: string;
+  faces: CadFace[];
+  boundingBox: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
+  totalSurfaceArea: number;
+}
+
+// ─── Surface-to-Node Mapping ──────────────────────────────────────────
+
+export interface SurfaceNodeMapping {
+  faceId: string;
+  nodeId: string;
+}
+
+// Preset palette for node-to-color assignment
+export const NODE_COLOR_PALETTE = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
+  '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e',
+  '#84cc16', '#a855f7', '#0ea5e9', '#d946ef', '#10b981',
+] as const;
+
+// ─── Viewport Polish Types ────────────────────────────────────────────
+
+export type RenderMode = 'solid' | 'wireframe' | 'thermal' | 'material';
+export type CameraPreset = 'isometric' | '+x' | '-x' | '+y' | '-y' | '+z' | '-z' | 'fit-all';
+
+export interface ViewportState {
+  renderMode: RenderMode;
+  colorScale: ColorScale;
+  thermalRange: ThermalRange;
+  focusTargetId: string | null;
+}
+
+export type CadImportStatus = 'idle' | 'parsing' | 'done' | 'error';
+
+export interface CadImportProgress {
+  percent: number;
+  message: string;
+}
+
 export type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 interface EditorState {
@@ -129,6 +185,15 @@ interface EditorState {
   _debounceTimer: ReturnType<typeof setTimeout> | null;
   /** Pending description for debounced push */
   _pendingDescription: string | null;
+
+  // CAD import
+  cadGeometry: CadGeometry | null;
+  cadImportStatus: CadImportStatus;
+  cadImportProgress: CadImportProgress;
+  selectedCadFaceId: string | null;
+  selectedCadFaceIds: string[];
+  hoveredCadFaceId: string | null;
+  surfaceNodeMappings: SurfaceNodeMapping[];
 
   // Simulation
   simulationStatus: 'idle' | 'running' | 'completed' | 'failed';
@@ -178,6 +243,28 @@ interface EditorState {
   /** Whether redo is available */
   canRedo: () => boolean;
 
+  // CAD import actions
+  setCadGeometry: (geometry: CadGeometry) => void;
+  setCadImportStatus: (status: CadImportStatus) => void;
+  setCadImportProgress: (progress: CadImportProgress) => void;
+  clearCadGeometry: () => void;
+  selectCadFace: (id: string | null) => void;
+  selectCadFaceMulti: (id: string, shiftKey: boolean) => void;
+  setHoveredCadFace: (id: string | null) => void;
+  assignSurfacesToNode: (faceIds: string[], nodeId: string) => void;
+  removeSurfaceAssignments: (faceIds: string[]) => void;
+  getNodeColorForFace: (faceId: string) => string | null;
+  getSurfaceProperties: (faceId: string) => { area: number; normal: [number, number, number]; centroid: [number, number, number] } | null;
+
+  // Viewport polish
+  viewportState: ViewportState;
+  setRenderMode: (mode: RenderMode) => void;
+  setColorScale: (scale: ColorScale) => void;
+  setThermalRange: (range: Partial<ThermalRange>) => void;
+  setCameraPreset: (preset: CameraPreset | null) => void;
+  cameraPreset: CameraPreset | null;
+  focusOnNode: (nodeId: string) => void;
+
   runSimulation: (config: SimulationConfig) => Promise<void>;
 }
 
@@ -221,8 +308,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   _debounceTimer: null,
   _pendingDescription: null,
 
+  cadGeometry: null,
+  cadImportStatus: 'idle',
+  cadImportProgress: { percent: 0, message: '' },
+  selectedCadFaceId: null,
+  selectedCadFaceIds: [],
+  hoveredCadFaceId: null,
+  surfaceNodeMappings: [],
+
   simulationStatus: 'idle',
   simulationResults: null,
+
+  // Viewport polish
+  viewportState: {
+    renderMode: 'solid' as RenderMode,
+    colorScale: 'rainbow' as ColorScale,
+    thermalRange: { min: 150, max: 400, auto: true },
+    focusTargetId: null,
+  },
+  cameraPreset: null,
 
   loadModel: async (projectId, modelId) => {
     try {
@@ -497,7 +601,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ selectedNodeId: null, selectedConductorId: null, selectedHeatLoadId: id }),
 
   clearSelection: () =>
-    set({ selectedNodeId: null, selectedConductorId: null, selectedHeatLoadId: null }),
+    set({ selectedNodeId: null, selectedConductorId: null, selectedHeatLoadId: null, selectedCadFaceId: null, selectedCadFaceIds: [] }),
 
   setShowResultsOverlay: (show) => set({ showResultsOverlay: show }),
   setActiveView: (view) => set({ activeView: view }),
@@ -610,6 +714,123 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   canUndo: () => get().historyIndex > 0,
   canRedo: () => get().historyIndex < get().history.length - 1,
+
+  // ─── CAD Import ──────────────────────────────────────────────────
+
+  setCadGeometry: (geometry) => set({ cadGeometry: geometry, cadImportStatus: 'done' }),
+  setCadImportStatus: (status) => set({ cadImportStatus: status }),
+  setCadImportProgress: (progress) => set({ cadImportProgress: progress }),
+  clearCadGeometry: () => set({ cadGeometry: null, cadImportStatus: 'idle', cadImportProgress: { percent: 0, message: '' }, selectedCadFaceId: null, selectedCadFaceIds: [], hoveredCadFaceId: null, surfaceNodeMappings: [] }),
+  selectCadFace: (id) => set({ selectedCadFaceId: id, selectedCadFaceIds: id ? [id] : [], selectedNodeId: null, selectedConductorId: null, selectedHeatLoadId: null }),
+
+  selectCadFaceMulti: (id, shiftKey) => {
+    if (shiftKey) {
+      set((state) => {
+        const ids = state.selectedCadFaceIds.includes(id)
+          ? state.selectedCadFaceIds.filter((fid) => fid !== id)
+          : [...state.selectedCadFaceIds, id];
+        return {
+          selectedCadFaceIds: ids,
+          selectedCadFaceId: ids.length === 1 ? ids[0] : ids.length === 0 ? null : state.selectedCadFaceId,
+          selectedNodeId: null,
+          selectedConductorId: null,
+          selectedHeatLoadId: null,
+        };
+      });
+    } else {
+      set({
+        selectedCadFaceId: id,
+        selectedCadFaceIds: [id],
+        selectedNodeId: null,
+        selectedConductorId: null,
+        selectedHeatLoadId: null,
+      });
+    }
+  },
+
+  setHoveredCadFace: (id) => set({ hoveredCadFaceId: id }),
+
+  assignSurfacesToNode: (faceIds, nodeId) => {
+    set((state) => {
+      // Remove existing mappings for these faces, then add new ones
+      const filtered = state.surfaceNodeMappings.filter((m) => !faceIds.includes(m.faceId));
+      const newMappings = [...filtered, ...faceIds.map((faceId) => ({ faceId, nodeId }))];
+      return { surfaceNodeMappings: newMappings, isDirty: true };
+    });
+    get()._scheduleAutoSave();
+  },
+
+  removeSurfaceAssignments: (faceIds) => {
+    set((state) => ({
+      surfaceNodeMappings: state.surfaceNodeMappings.filter((m) => !faceIds.includes(m.faceId)),
+      isDirty: true,
+    }));
+    get()._scheduleAutoSave();
+  },
+
+  getNodeColorForFace: (faceId) => {
+    const state = get();
+    const mapping = state.surfaceNodeMappings.find((m) => m.faceId === faceId);
+    if (!mapping) return null;
+    // Assign colors based on node order
+    const nodeIds = [...new Set(state.surfaceNodeMappings.map((m) => m.nodeId))];
+    const idx = nodeIds.indexOf(mapping.nodeId);
+    if (idx < NODE_COLOR_PALETTE.length) {
+      return NODE_COLOR_PALETTE[idx];
+    }
+    // HSL-based fallback for 11+ nodes — golden-angle hue spacing for visual distinction
+    const hue = (idx * 137.508) % 360;
+    const saturation = 65 + (idx % 3) * 10; // 65-85%
+    const lightness = 50 + (idx % 2) * 10;  // 50-60%
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  },
+
+  getSurfaceProperties: (faceId) => {
+    const state = get();
+    if (!state.cadGeometry) return null;
+    const face = state.cadGeometry.faces.find((f) => f.id === faceId);
+    if (!face) return null;
+
+    // Compute centroid and average normal from vertex data
+    const positions = face.positions;
+    const normals = face.normals;
+    let cx = 0, cy = 0, cz = 0;
+    let nx = 0, ny = 0, nz = 0;
+    const vertCount = positions.length / 3;
+    for (let i = 0; i < vertCount; i++) {
+      cx += positions[i * 3];
+      cy += positions[i * 3 + 1];
+      cz += positions[i * 3 + 2];
+      nx += normals[i * 3];
+      ny += normals[i * 3 + 1];
+      nz += normals[i * 3 + 2];
+    }
+    cx /= vertCount; cy /= vertCount; cz /= vertCount;
+    // Normalize the normal
+    const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+    nx /= len; ny /= len; nz /= len;
+
+    return {
+      area: face.surfaceArea,
+      normal: [nx, ny, nz] as [number, number, number],
+      centroid: [cx, cy, cz] as [number, number, number],
+    };
+  },
+
+  // ─── Viewport Polish ──────────────────────────────────────────────
+
+  setRenderMode: (mode) => set((s) => ({ viewportState: { ...s.viewportState, renderMode: mode } })),
+  setColorScale: (scale) => set((s) => ({ viewportState: { ...s.viewportState, colorScale: scale } })),
+  setThermalRange: (range) => set((s) => ({
+    viewportState: { ...s.viewportState, thermalRange: { ...s.viewportState.thermalRange, ...range } },
+  })),
+  setCameraPreset: (preset) => set({ cameraPreset: preset }),
+  focusOnNode: (nodeId) => set((s) => ({
+    viewportState: { ...s.viewportState, focusTargetId: nodeId },
+    selectedNodeId: nodeId,
+    selectedConductorId: null,
+    selectedHeatLoadId: null,
+  })),
 
   // ─── Simulation ─────────────────────────────────────────────────
 

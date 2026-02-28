@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "npx tsx src/scripts/seed-materials.ts",
-    "test:solver": "npx tsx src/scripts/test-solver.ts"
+    "test:solver": "npx tsx src/scripts/test-solver.ts",
+    "postinstall": "cp node_modules/occt-import-js/dist/occt-import-js.wasm public/wasm/ && cp node_modules/occt-import-js/dist/occt-import-js.js public/wasm/"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
@@ -45,6 +46,7 @@
     "mathjs": "^13.0.0",
     "next": "^14.2.0",
     "next-auth": "^4.24.0",
+    "occt-import-js": "^0.0.23",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-hook-form": "^7.71.2",

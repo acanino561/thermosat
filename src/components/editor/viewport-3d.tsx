@@ -1,15 +1,22 @@
 'use client';
 
-import { useRef, useState, useCallback, useMemo, Suspense } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import {
   OrbitControls,
   Html,
   Line,
-  GradientTexture,
+  GizmoHelper,
+  GizmoViewport,
 } from '@react-three/drei';
 import * as THREE from 'three';
-import { useEditorStore, ThermalNode, Conductor, HeatLoad } from '@/lib/stores/editor-store';
+import { useEditorStore, ThermalNode, Conductor, HeatLoad, CadFace, CadGeometry, NODE_COLOR_PALETTE, type RenderMode, type CameraPreset } from '@/lib/stores/editor-store';
+import { temperatureToHex, type ColorScale, type ThermalRange } from '@/lib/thermal-colors';
+import { ViewportToolbar } from './viewport-toolbar';
+import { SurfaceContextMenu } from './surface-context-menu';
+import { SurfaceProperties } from './surface-properties';
+import { ThermalLegend } from './thermal-legend';
+import { ViewportContextMenu } from './viewport-context-menu';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -160,6 +167,10 @@ function ThermalNodeMesh({
         onClick={(e) => {
           e.stopPropagation();
           onSelect(node.id);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          useEditorStore.getState().focusOnNode(node.id);
         }}
         onPointerOver={(e) => {
           e.stopPropagation();
@@ -316,9 +327,327 @@ function CoordinateAxes() {
   );
 }
 
+// ─── Camera Controller ──────────────────────────────────────────────────
+
+const CAMERA_PRESET_POSITIONS: Record<CameraPreset, { position: [number, number, number]; target: [number, number, number] }> = {
+  'isometric': { position: [8, 6, 8], target: [0, 0, 0] },
+  '+x': { position: [15, 0, 0], target: [0, 0, 0] },
+  '-x': { position: [-15, 0, 0], target: [0, 0, 0] },
+  '+y': { position: [0, 15, 0], target: [0, 0, 0] },
+  '-y': { position: [0, -15, 0], target: [0, 0, 0] },
+  '+z': { position: [0, 0, 15], target: [0, 0, 0] },
+  '-z': { position: [0, 0, -15], target: [0, 0, 0] },
+  'fit-all': { position: [10, 8, 10], target: [0, 0, 0] },
+};
+
+function CameraController({ nodePositions }: { nodePositions: Map<string, THREE.Vector3> }) {
+  const { camera } = useThree();
+  const cameraPreset = useEditorStore((s) => s.cameraPreset);
+  const setCameraPreset = useEditorStore((s) => s.setCameraPreset);
+  const focusTargetId = useEditorStore((s) => s.viewportState.focusTargetId);
+
+  const animRef = useRef<{ from: THREE.Vector3; to: THREE.Vector3; targetFrom: THREE.Vector3; targetTo: THREE.Vector3; progress: number } | null>(null);
+  const controlsRef = useRef<any>(null);
+
+  // Find OrbitControls via the scene (makeDefault sets it)
+  const { controls } = useThree();
+
+  // Handle camera presets
+  useEffect(() => {
+    if (!cameraPreset) return;
+    const preset = CAMERA_PRESET_POSITIONS[cameraPreset];
+    if (!preset) return;
+
+    const fromPos = camera.position.clone();
+    const fromTarget = controls ? new THREE.Vector3().copy((controls as any).target) : new THREE.Vector3(0, 0, 0);
+
+    animRef.current = {
+      from: fromPos,
+      to: new THREE.Vector3(...preset.position),
+      targetFrom: fromTarget,
+      targetTo: new THREE.Vector3(...preset.target),
+      progress: 0,
+    };
+
+    // Clear preset so it can be re-triggered
+    setCameraPreset(null);
+  }, [cameraPreset, camera, controls, setCameraPreset]);
+
+  // Handle focus on node
+  useEffect(() => {
+    if (!focusTargetId) return;
+    const targetPos = nodePositions.get(focusTargetId);
+    if (!targetPos) return;
+
+    const dir = camera.position.clone().sub(targetPos).normalize().multiplyScalar(5);
+    const newPos = targetPos.clone().add(dir);
+
+    const fromPos = camera.position.clone();
+    const fromTarget = controls ? new THREE.Vector3().copy((controls as any).target) : new THREE.Vector3(0, 0, 0);
+
+    animRef.current = {
+      from: fromPos,
+      to: newPos,
+      targetFrom: fromTarget,
+      targetTo: targetPos.clone(),
+      progress: 0,
+    };
+
+    // Clear focus target
+    useEditorStore.setState((s) => ({
+      viewportState: { ...s.viewportState, focusTargetId: null },
+    }));
+  }, [focusTargetId, nodePositions, camera, controls]);
+
+  // Animate
+  useFrame((_, delta) => {
+    if (!animRef.current) return;
+    const anim = animRef.current;
+    anim.progress = Math.min(1, anim.progress + delta * 3);
+    const t = 1 - Math.pow(1 - anim.progress, 3); // ease out cubic
+
+    camera.position.lerpVectors(anim.from, anim.to, t);
+    if (controls) {
+      const target = new THREE.Vector3().lerpVectors(anim.targetFrom, anim.targetTo, t);
+      (controls as any).target.copy(target);
+    }
+
+    if (anim.progress >= 1) {
+      animRef.current = null;
+    }
+  });
+
+  return null;
+}
+
+// ─── Screenshot Helper ──────────────────────────────────────────────────
+
+function useScreenshot() {
+  const glRef = useRef<THREE.WebGLRenderer | null>(null);
+
+  const capture = useCallback(() => {
+    if (!glRef.current) return;
+    const canvas = glRef.current.domElement;
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `thermosat-viewport-${Date.now()}.png`;
+    link.href = dataUrl;
+    link.click();
+  }, []);
+
+  return { glRef, capture };
+}
+
+function ScreenshotCapture({ glRef }: { glRef: React.MutableRefObject<THREE.WebGLRenderer | null> }) {
+  const { gl } = useThree();
+  useEffect(() => {
+    glRef.current = gl;
+  }, [gl, glRef]);
+  return null;
+}
+
+// ─── CAD Face Mesh ──────────────────────────────────────────────────────
+
+interface CadFaceMeshProps {
+  face: CadFace;
+  isSelected: boolean;
+  isHovered: boolean;
+  nodeColor: string | null;
+  renderMode: RenderMode;
+  thermalColor: string | null;
+  onSelect: (id: string, shiftKey: boolean) => void;
+  onHover: (id: string | null) => void;
+  onContextMenu: (id: string, event: ThreeEvent<MouseEvent>) => void;
+}
+
+function CadFaceMesh({ face, isSelected, isHovered, nodeColor, renderMode, thermalColor, onSelect, onHover, onContextMenu }: CadFaceMeshProps) {
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(face.positions, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(face.normals, 3));
+    geo.setIndex(new THREE.BufferAttribute(face.indices, 1));
+    return geo;
+  }, [face.positions, face.normals, face.indices]);
+
+  const baseColor = useMemo(() => {
+    if (renderMode === 'thermal' && thermalColor) return new THREE.Color(thermalColor);
+    if (renderMode === 'material' && nodeColor) return new THREE.Color(nodeColor);
+    if (nodeColor) return new THREE.Color(nodeColor);
+    return new THREE.Color(face.color[0], face.color[1], face.color[2]);
+  }, [face.color, nodeColor, renderMode, thermalColor]);
+
+  const emissiveColor = useMemo(() => {
+    if (isSelected) return '#00e5ff';
+    if (isHovered) return '#ffffff';
+    if (renderMode === 'thermal' && thermalColor) return thermalColor;
+    if (nodeColor) return nodeColor;
+    return `#${baseColor.getHexString()}`;
+  }, [isSelected, isHovered, nodeColor, baseColor, renderMode, thermalColor]);
+
+  const isWireframeMode = renderMode === 'wireframe';
+  const emissiveIntensity = isSelected ? 0.4 : isHovered ? 0.25 : renderMode === 'thermal' ? 0.3 : nodeColor ? 0.15 : 0.05;
+
+  return (
+    <group>
+      <mesh
+        geometry={geometry}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(face.id, e.nativeEvent.shiftKey);
+        }}
+        onContextMenu={(e) => {
+          e.stopPropagation();
+          onContextMenu(face.id, e);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          onHover(face.id);
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={(e) => {
+          e.stopPropagation();
+          onHover(null);
+          document.body.style.cursor = 'auto';
+        }}
+      >
+        <meshStandardMaterial
+          color={baseColor}
+          emissive={emissiveColor}
+          emissiveIntensity={emissiveIntensity}
+          roughness={0.4}
+          metalness={0.6}
+          side={THREE.DoubleSide}
+          transparent={isWireframeMode}
+          opacity={isWireframeMode ? 0.15 : 1}
+        />
+      </mesh>
+      {/* Wireframe overlay in wireframe mode */}
+      {isWireframeMode && (
+        <mesh geometry={geometry}>
+          <meshBasicMaterial color={baseColor} wireframe transparent opacity={0.6} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      {/* Hover highlight overlay */}
+      {isHovered && !isSelected && (
+        <mesh geometry={geometry}>
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.1} depthWrite={false} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      {/* Selection wireframe */}
+      {isSelected && (
+        <mesh geometry={geometry}>
+          <meshBasicMaterial color="#00e5ff" wireframe transparent opacity={0.3} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+// ─── CAD Geometry View ──────────────────────────────────────────────────
+
+interface CadGeometryViewProps {
+  geometry: CadGeometry;
+  selectedFaceIds: string[];
+  hoveredFaceId: string | null;
+  onSelectFace: (id: string, shiftKey: boolean) => void;
+  onHoverFace: (id: string | null) => void;
+  onContextMenuFace: (id: string, event: ThreeEvent<MouseEvent>) => void;
+}
+
+function CadGeometryView({ geometry, selectedFaceIds, hoveredFaceId, onSelectFace, onHoverFace, onContextMenuFace }: CadGeometryViewProps) {
+  const surfaceNodeMappings = useEditorStore((s) => s.surfaceNodeMappings);
+  const renderMode = useEditorStore((s) => s.viewportState.renderMode);
+  const colorScale = useEditorStore((s) => s.viewportState.colorScale);
+  const thermalRange = useEditorStore((s) => s.viewportState.thermalRange);
+  const nodes = useEditorStore((s) => s.nodes);
+  const simulationResults = useEditorStore((s) => s.simulationResults);
+  const showResultsOverlay = useEditorStore((s) => s.showResultsOverlay);
+
+  const { offset, scale } = useMemo(() => {
+    const { min, max } = geometry.boundingBox;
+    const cx = (min[0] + max[0]) / 2;
+    const cy = (min[1] + max[1]) / 2;
+    const cz = (min[2] + max[2]) / 2;
+    const dx = max[0] - min[0];
+    const dy = max[1] - min[1];
+    const dz = max[2] - min[2];
+    const maxDim = Math.max(dx, dy, dz, 0.001);
+    const s = 8 / maxDim;
+    return { offset: new THREE.Vector3(-cx, -cy, -cz), scale: s };
+  }, [geometry.boundingBox]);
+
+  // Build node color map
+  const nodeColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const nodeIds = [...new Set(surfaceNodeMappings.map((m) => m.nodeId))];
+    for (const mapping of surfaceNodeMappings) {
+      const idx = nodeIds.indexOf(mapping.nodeId);
+      if (idx < NODE_COLOR_PALETTE.length) {
+        map.set(mapping.faceId, NODE_COLOR_PALETTE[idx]);
+      } else {
+        const hue = (idx * 137.508) % 360;
+        const sat = 65 + (idx % 3) * 10;
+        const lit = 50 + (idx % 2) * 10;
+        map.set(mapping.faceId, `hsl(${hue}, ${sat}%, ${lit}%)`);
+      }
+    }
+    return map;
+  }, [surfaceNodeMappings]);
+
+  // Compute thermal colors for each face
+  const thermalColorMap = useMemo(() => {
+    if (renderMode !== 'thermal') return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const face of geometry.faces) {
+      const mapping = surfaceNodeMappings.find((m) => m.faceId === face.id);
+      if (!mapping) continue;
+      // Get node temperature
+      let temp: number | null = null;
+      if (showResultsOverlay && simulationResults) {
+        const res = simulationResults.nodeResults[mapping.nodeId];
+        if (res && res.temperatures.length > 0) {
+          temp = res.temperatures[res.temperatures.length - 1];
+        }
+      }
+      if (temp === null) {
+        const node = nodes.find((n) => n.id === mapping.nodeId);
+        if (node) temp = node.temperature;
+      }
+      if (temp !== null) {
+        map.set(face.id, temperatureToHex(temp, thermalRange, colorScale));
+      }
+    }
+    return map;
+  }, [renderMode, geometry.faces, surfaceNodeMappings, nodes, simulationResults, showResultsOverlay, thermalRange, colorScale]);
+
+  return (
+    <group position={[offset.x * scale, offset.y * scale, offset.z * scale]} scale={[scale, scale, scale]}>
+      {geometry.faces.map((face) => (
+        <CadFaceMesh
+          key={face.id}
+          face={face}
+          isSelected={selectedFaceIds.includes(face.id)}
+          isHovered={hoveredFaceId === face.id}
+          nodeColor={nodeColorMap.get(face.id) ?? null}
+          renderMode={renderMode}
+          thermalColor={thermalColorMap.get(face.id) ?? null}
+          onSelect={onSelectFace}
+          onHover={onHoverFace}
+          onContextMenu={onContextMenuFace}
+        />
+      ))}
+    </group>
+  );
+}
+
 // ─── Scene Contents ─────────────────────────────────────────────────────
 
-function SceneContents() {
+interface SceneContentsProps {
+  onFaceContextMenu: (faceId: string, clientX: number, clientY: number) => void;
+  screenshotGlRef: React.MutableRefObject<THREE.WebGLRenderer | null>;
+}
+
+function SceneContents({ onFaceContextMenu, screenshotGlRef }: SceneContentsProps) {
   const nodes = useEditorStore((s) => s.nodes);
   const conductors = useEditorStore((s) => s.conductors);
   const heatLoads = useEditorStore((s) => s.heatLoads);
@@ -329,6 +658,11 @@ function SceneContents() {
   const clearSelection = useEditorStore((s) => s.clearSelection);
   const showResultsOverlay = useEditorStore((s) => s.showResultsOverlay);
   const simulationResults = useEditorStore((s) => s.simulationResults);
+  const cadGeometry = useEditorStore((s) => s.cadGeometry);
+  const selectedCadFaceIds = useEditorStore((s) => s.selectedCadFaceIds);
+  const hoveredCadFaceId = useEditorStore((s) => s.hoveredCadFaceId);
+  const selectCadFaceMulti = useEditorStore((s) => s.selectCadFaceMulti);
+  const setHoveredCadFace = useEditorStore((s) => s.setHoveredCadFace);
 
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
@@ -374,9 +708,8 @@ function SceneContents() {
         <meshBasicMaterial />
       </mesh>
 
-      {/* Grid + axes */}
+      {/* Grid */}
       <GridFloor />
-      <CoordinateAxes />
 
       {/* Conductors */}
       {conductors.map((cond) => {
@@ -416,6 +749,25 @@ function SceneContents() {
         );
       })}
 
+      {/* CAD Geometry */}
+      {cadGeometry && (
+        <CadGeometryView
+          geometry={cadGeometry}
+          selectedFaceIds={selectedCadFaceIds}
+          hoveredFaceId={hoveredCadFaceId}
+          onSelectFace={selectCadFaceMulti}
+          onHoverFace={setHoveredCadFace}
+          onContextMenuFace={(faceId, event) => {
+            // Ensure face is selected
+            const store = useEditorStore.getState();
+            if (!store.selectedCadFaceIds.includes(faceId)) {
+              store.selectCadFaceMulti(faceId, false);
+            }
+            onFaceContextMenu(faceId, event.nativeEvent.clientX, event.nativeEvent.clientY);
+          }}
+        />
+      )}
+
       {/* Hover tooltip */}
       {hoveredNodeId && (() => {
         const hNode = nodes.find((n) => n.id === hoveredNodeId);
@@ -454,17 +806,91 @@ function SceneContents() {
         dampingFactor={0.05}
         enableDamping
       />
+
+      {/* Camera controller for presets and focus */}
+      <CameraController nodePositions={nodePositions} />
+
+      {/* Coordinate axes gizmo */}
+      <GizmoHelper alignment="bottom-left" margin={[60, 60]}>
+        <GizmoViewport
+          axisColors={['#ff3355', '#33ff55', '#3355ff']}
+          labelColor="white"
+        />
+      </GizmoHelper>
+
+      {/* Screenshot capture helper */}
+      <ScreenshotCapture glRef={screenshotGlRef} />
     </>
   );
 }
 
 // ─── Viewport3D (exported) ──────────────────────────────────────────────
+// ─── Viewport3D (exported) ──────────────────────────────────────────────
 
 export function Viewport3D() {
   const nodes = useEditorStore((s) => s.nodes);
+  const cadGeometry = useEditorStore((s) => s.cadGeometry);
+  const cadImportStatus = useEditorStore((s) => s.cadImportStatus);
+  const selectedCadFaceIds = useEditorStore((s) => s.selectedCadFaceIds);
+  const [isDragging, setIsDragging] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const { glRef: screenshotGlRef, capture: captureScreenshot } = useScreenshot();
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    if (ext !== '.step' && ext !== '.stp') return;
+
+    const { validateStepFile, parseStepFile } = await import('@/lib/cad/step-parser');
+    const store = useEditorStore.getState();
+
+    const validationError = validateStepFile(file);
+    if (validationError) return;
+
+    store.setCadImportStatus('parsing');
+    store.setCadImportProgress({ percent: 0, message: 'Starting…' });
+
+    try {
+      const result = await parseStepFile(file, (progress) => {
+        store.setCadImportProgress(progress);
+      });
+      store.setCadGeometry({
+        fileName: file.name,
+        faces: result.faces,
+        boundingBox: result.boundingBox,
+        totalSurfaceArea: result.totalSurfaceArea,
+      });
+    } catch {
+      store.setCadImportStatus('error');
+    }
+  }, []);
 
   return (
-    <div className="h-full w-full relative bg-[#030810] overflow-hidden">
+    <div
+      className="h-full w-full relative bg-[#030810] overflow-hidden"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <Canvas
         camera={{ position: [8, 6, 8], fov: 50, near: 0.1, far: 200 }}
         gl={{
@@ -481,17 +907,68 @@ export function Viewport3D() {
         <color attach="background" args={['#030810']} />
         <fog attach="fog" args={['#030810', 30, 60]} />
         <Suspense fallback={null}>
-          <SceneContents />
+          <SceneContents
+            screenshotGlRef={screenshotGlRef}
+            onFaceContextMenu={(faceId, clientX, clientY) => {
+              setContextMenu({ x: clientX, y: clientY });
+            }}
+          />
         </Suspense>
       </Canvas>
 
+      {/* Viewport toolbar */}
+      <ViewportToolbar onScreenshot={captureScreenshot} />
+
+      {/* Thermal legend */}
+      <ThermalLegend />
+
+      {/* Surface properties panel */}
+      {selectedCadFaceIds.length > 0 && (
+        <div
+          className="absolute top-14 left-3 z-10 w-60 rounded-lg p-3"
+          style={{
+            background: 'rgba(5,10,20,0.92)',
+            border: '1px solid rgba(0,229,255,0.2)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <SurfaceProperties />
+        </div>
+      )}
+
+      {/* Surface context menu */}
+      {contextMenu && (
+        <SurfaceContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          faceIds={selectedCadFaceIds}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div
+            className="px-6 py-4 rounded-lg text-sm font-mono"
+            style={{
+              background: 'rgba(0,229,255,0.1)',
+              border: '2px dashed rgba(0,229,255,0.5)',
+              color: '#00e5ff',
+            }}
+          >
+            Drop .step file to import
+          </div>
+        </div>
+      )}
+
       {/* Empty state */}
-      {nodes.length === 0 && (
+      {nodes.length === 0 && !cadGeometry && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <div className="text-muted-foreground text-sm font-mono">No nodes in model</div>
             <div className="text-muted-foreground/50 text-xs mt-1 font-mono">
-              Add nodes using the toolbar above
+              Add nodes or drop a STEP file to get started
             </div>
           </div>
         </div>
@@ -507,7 +984,7 @@ export function Viewport3D() {
             border: '1px solid rgba(255,255,255,0.06)',
           }}
         >
-          {nodes.length} nodes · 3D
+          {nodes.length} nodes{cadGeometry ? ` · ${cadGeometry.faces.length} faces` : ''} · 3D
         </div>
       )}
     </div>

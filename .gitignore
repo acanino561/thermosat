@@ -35,3 +35,7 @@ next-env.d.ts
 
 # drizzle
 /drizzle/meta
+-e 
+# vendored WASM (copied via postinstall)
+public/wasm/occt-import-js.wasm
+public/wasm/occt-import-js.js
