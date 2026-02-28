@@ -93,6 +93,35 @@ const DEBOUNCE_MS = 500;
 const AUTO_SAVE_DEBOUNCE_MS = 30_000; // 30 seconds
 const SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
+// ─── CAD Geometry Types ───────────────────────────────────────────────
+
+export interface CadFace {
+  id: string;
+  name: string;
+  positions: Float32Array;
+  normals: Float32Array;
+  indices: Uint32Array;
+  color: [number, number, number];
+  surfaceArea: number;
+}
+
+export interface CadGeometry {
+  fileName: string;
+  faces: CadFace[];
+  boundingBox: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
+  totalSurfaceArea: number;
+}
+
+export type CadImportStatus = 'idle' | 'parsing' | 'done' | 'error';
+
+export interface CadImportProgress {
+  percent: number;
+  message: string;
+}
+
 export type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 interface EditorState {
@@ -129,6 +158,12 @@ interface EditorState {
   _debounceTimer: ReturnType<typeof setTimeout> | null;
   /** Pending description for debounced push */
   _pendingDescription: string | null;
+
+  // CAD import
+  cadGeometry: CadGeometry | null;
+  cadImportStatus: CadImportStatus;
+  cadImportProgress: CadImportProgress;
+  selectedCadFaceId: string | null;
 
   // Simulation
   simulationStatus: 'idle' | 'running' | 'completed' | 'failed';
@@ -178,6 +213,13 @@ interface EditorState {
   /** Whether redo is available */
   canRedo: () => boolean;
 
+  // CAD import actions
+  setCadGeometry: (geometry: CadGeometry) => void;
+  setCadImportStatus: (status: CadImportStatus) => void;
+  setCadImportProgress: (progress: CadImportProgress) => void;
+  clearCadGeometry: () => void;
+  selectCadFace: (id: string | null) => void;
+
   runSimulation: (config: SimulationConfig) => Promise<void>;
 }
 
@@ -220,6 +262,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   historyIndex: -1,
   _debounceTimer: null,
   _pendingDescription: null,
+
+  cadGeometry: null,
+  cadImportStatus: 'idle',
+  cadImportProgress: { percent: 0, message: '' },
+  selectedCadFaceId: null,
 
   simulationStatus: 'idle',
   simulationResults: null,
@@ -610,6 +657,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   canUndo: () => get().historyIndex > 0,
   canRedo: () => get().historyIndex < get().history.length - 1,
+
+  // ─── CAD Import ──────────────────────────────────────────────────
+
+  setCadGeometry: (geometry) => set({ cadGeometry: geometry, cadImportStatus: 'done' }),
+  setCadImportStatus: (status) => set({ cadImportStatus: status }),
+  setCadImportProgress: (progress) => set({ cadImportProgress: progress }),
+  clearCadGeometry: () => set({ cadGeometry: null, cadImportStatus: 'idle', cadImportProgress: { percent: 0, message: '' }, selectedCadFaceId: null }),
+  selectCadFace: (id) => set({ selectedCadFaceId: id, selectedNodeId: null, selectedConductorId: null, selectedHeatLoadId: null }),
 
   // ─── Simulation ─────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@ import {
   GradientTexture,
 } from '@react-three/drei';
 import * as THREE from 'three';
-import { useEditorStore, ThermalNode, Conductor, HeatLoad } from '@/lib/stores/editor-store';
+import { useEditorStore, ThermalNode, Conductor, HeatLoad, CadFace, CadGeometry } from '@/lib/stores/editor-store';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -316,6 +316,96 @@ function CoordinateAxes() {
   );
 }
 
+// ─── CAD Face Mesh ──────────────────────────────────────────────────────
+
+interface CadFaceMeshProps {
+  face: CadFace;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+}
+
+function CadFaceMesh({ face, isSelected, onSelect }: CadFaceMeshProps) {
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(face.positions, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(face.normals, 3));
+    geo.setIndex(new THREE.BufferAttribute(face.indices, 1));
+    return geo;
+  }, [face.positions, face.normals, face.indices]);
+
+  const color = useMemo(() => new THREE.Color(face.color[0], face.color[1], face.color[2]), [face.color]);
+
+  return (
+    <group>
+      <mesh
+        geometry={geometry}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(face.id);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={(e) => {
+          e.stopPropagation();
+          document.body.style.cursor = 'auto';
+        }}
+      >
+        <meshStandardMaterial
+          color={color}
+          emissive={isSelected ? '#00e5ff' : color}
+          emissiveIntensity={isSelected ? 0.4 : 0.05}
+          roughness={0.4}
+          metalness={0.6}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {isSelected && (
+        <mesh geometry={geometry}>
+          <meshBasicMaterial color="#00e5ff" wireframe transparent opacity={0.3} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+// ─── CAD Geometry View ──────────────────────────────────────────────────
+
+interface CadGeometryViewProps {
+  geometry: CadGeometry;
+  selectedFaceId: string | null;
+  onSelectFace: (id: string) => void;
+}
+
+function CadGeometryView({ geometry, selectedFaceId, onSelectFace }: CadGeometryViewProps) {
+  const { offset, scale } = useMemo(() => {
+    const { min, max } = geometry.boundingBox;
+    const cx = (min[0] + max[0]) / 2;
+    const cy = (min[1] + max[1]) / 2;
+    const cz = (min[2] + max[2]) / 2;
+    const dx = max[0] - min[0];
+    const dy = max[1] - min[1];
+    const dz = max[2] - min[2];
+    const maxDim = Math.max(dx, dy, dz, 0.001);
+    const s = 8 / maxDim;
+    return { offset: new THREE.Vector3(-cx, -cy, -cz), scale: s };
+  }, [geometry.boundingBox]);
+
+  return (
+    <group position={[offset.x * scale, offset.y * scale, offset.z * scale]} scale={[scale, scale, scale]}>
+      {geometry.faces.map((face) => (
+        <CadFaceMesh
+          key={face.id}
+          face={face}
+          isSelected={selectedFaceId === face.id}
+          onSelect={onSelectFace}
+        />
+      ))}
+    </group>
+  );
+}
+
 // ─── Scene Contents ─────────────────────────────────────────────────────
 
 function SceneContents() {
@@ -329,6 +419,9 @@ function SceneContents() {
   const clearSelection = useEditorStore((s) => s.clearSelection);
   const showResultsOverlay = useEditorStore((s) => s.showResultsOverlay);
   const simulationResults = useEditorStore((s) => s.simulationResults);
+  const cadGeometry = useEditorStore((s) => s.cadGeometry);
+  const selectedCadFaceId = useEditorStore((s) => s.selectedCadFaceId);
+  const selectCadFace = useEditorStore((s) => s.selectCadFace);
 
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
@@ -416,6 +509,15 @@ function SceneContents() {
         );
       })}
 
+      {/* CAD Geometry */}
+      {cadGeometry && (
+        <CadGeometryView
+          geometry={cadGeometry}
+          selectedFaceId={selectedCadFaceId}
+          onSelectFace={selectCadFace}
+        />
+      )}
+
       {/* Hover tooltip */}
       {hoveredNodeId && (() => {
         const hNode = nodes.find((n) => n.id === hoveredNodeId);
@@ -462,9 +564,64 @@ function SceneContents() {
 
 export function Viewport3D() {
   const nodes = useEditorStore((s) => s.nodes);
+  const cadGeometry = useEditorStore((s) => s.cadGeometry);
+  const cadImportStatus = useEditorStore((s) => s.cadImportStatus);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    if (ext !== '.step' && ext !== '.stp') return;
+
+    const { validateStepFile, parseStepFile } = await import('@/lib/cad/step-parser');
+    const store = useEditorStore.getState();
+
+    const validationError = validateStepFile(file);
+    if (validationError) return;
+
+    store.setCadImportStatus('parsing');
+    store.setCadImportProgress({ percent: 0, message: 'Starting…' });
+
+    try {
+      const result = await parseStepFile(file, (progress) => {
+        store.setCadImportProgress(progress);
+      });
+      store.setCadGeometry({
+        fileName: file.name,
+        faces: result.faces,
+        boundingBox: result.boundingBox,
+        totalSurfaceArea: result.totalSurfaceArea,
+      });
+    } catch {
+      store.setCadImportStatus('error');
+    }
+  }, []);
 
   return (
-    <div className="h-full w-full relative bg-[#030810] overflow-hidden">
+    <div
+      className="h-full w-full relative bg-[#030810] overflow-hidden"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <Canvas
         camera={{ position: [8, 6, 8], fov: 50, near: 0.1, far: 200 }}
         gl={{
@@ -485,13 +642,29 @@ export function Viewport3D() {
         </Suspense>
       </Canvas>
 
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div
+            className="px-6 py-4 rounded-lg text-sm font-mono"
+            style={{
+              background: 'rgba(0,229,255,0.1)',
+              border: '2px dashed rgba(0,229,255,0.5)',
+              color: '#00e5ff',
+            }}
+          >
+            Drop .step file to import
+          </div>
+        </div>
+      )}
+
       {/* Empty state */}
-      {nodes.length === 0 && (
+      {nodes.length === 0 && !cadGeometry && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <div className="text-muted-foreground text-sm font-mono">No nodes in model</div>
             <div className="text-muted-foreground/50 text-xs mt-1 font-mono">
-              Add nodes using the toolbar above
+              Add nodes or drop a STEP file to get started
             </div>
           </div>
         </div>
@@ -507,7 +680,7 @@ export function Viewport3D() {
             border: '1px solid rgba(255,255,255,0.06)',
           }}
         >
-          {nodes.length} nodes · 3D
+          {nodes.length} nodes{cadGeometry ? ` · ${cadGeometry.faces.length} faces` : ''} · 3D
         </div>
       )}
     </div>
