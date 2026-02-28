@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Play, Pause, SkipBack, FastForward } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, FastForward, ChevronLeft, ChevronRight, Eclipse } from 'lucide-react';
 import { useTimelineStore } from '@/lib/stores/timeline-store';
 import {
   ORBIT_PERIOD_MIN,
@@ -12,6 +12,7 @@ import {
   getAllTemperaturesAtTime,
   timeToIndex,
   nodeProfiles,
+  TIME_STEP_MIN,
 } from '@/lib/demo/simulation-data';
 import { cn } from '@/lib/utils';
 
@@ -123,7 +124,32 @@ export function TimelineScrubber() {
     return `${mins.toString().padStart(3, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const speeds = [1, 5, 10, 25, 50];
+  const speeds = [0.1, 0.5, 1, 2, 5, 10, 25, 50];
+
+  // Find eclipse entry/exit times for jump buttons
+  const eclipseJumpTargets = useMemo(() => {
+    if (eclipsePeriods.length === 0) return null;
+    // Find next eclipse entry after current time
+    const nextEntry = eclipsePeriods.find((ep) => ep.start > currentTime);
+    const prevEntry = [...eclipsePeriods].reverse().find((ep) => ep.start <= currentTime);
+    // Find next eclipse exit after current time
+    const nextExit = eclipsePeriods.find((ep) => ep.end > currentTime);
+    const prevExit = [...eclipsePeriods].reverse().find((ep) => ep.end <= currentTime);
+    return {
+      nextEntryTime: nextEntry?.start ?? eclipsePeriods[0].start,
+      nextExitTime: nextExit?.end ?? eclipsePeriods[0].end,
+    };
+  }, [currentTime]);
+
+  const stepBackward = useCallback(() => {
+    const newTime = Math.max(0, currentTime - TIME_STEP_MIN);
+    setTime(newTime);
+  }, [currentTime, setTime]);
+
+  const stepForward = useCallback(() => {
+    const newTime = Math.min(TOTAL_TIME_MIN, currentTime + TIME_STEP_MIN);
+    setTime(newTime);
+  }, [currentTime, setTime]);
 
   return (
     <div
@@ -224,6 +250,39 @@ export function TimelineScrubber() {
           >
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </button>
+          <button
+            onClick={stepBackward}
+            className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+            title="Step backward"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={stepForward}
+            className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+            title="Step forward"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+          {/* Eclipse jump buttons */}
+          {eclipseJumpTargets && (
+            <>
+              <button
+                onClick={() => setTime(eclipseJumpTargets.nextEntryTime)}
+                className="px-1.5 py-0.5 rounded text-[9px] font-mono text-indigo-400/70 hover:text-indigo-400 hover:bg-indigo-400/5 transition-colors"
+                title="Jump to eclipse entry"
+              >
+                → Eclipse
+              </button>
+              <button
+                onClick={() => setTime(eclipseJumpTargets.nextExitTime)}
+                className="px-1.5 py-0.5 rounded text-[9px] font-mono text-cyan-400/70 hover:text-cyan-400 hover:bg-cyan-400/5 transition-colors"
+                title="Jump to eclipse exit"
+              >
+                → Sunlit
+              </button>
+            </>
+          )}
         </div>
 
         {/* Time display */}

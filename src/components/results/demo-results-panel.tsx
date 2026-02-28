@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   LineChart,
   Line,
@@ -27,6 +27,7 @@ import { useEditorStore } from '@/lib/stores/editor-store';
 import { cn } from '@/lib/utils';
 import { TemperatureChart as WhatIfTemperatureChart } from '@/components/results/temperature-chart';
 import { ResultsTable } from '@/components/results/results-table';
+import { OrbitPlayback, OrbitViewToggle } from '@/components/results/orbit-playback';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -515,6 +516,7 @@ export function DemoResultsPanel() {
   const nodes = useEditorStore((s) => s.nodes);
   const whatIfSensitivityEntries = useEditorStore((s) => s.whatIfSensitivityEntries);
   const comparisonResults = useEditorStore((s) => s.comparisonResults);
+  const [showOrbitView, setShowOrbitView] = useState(false);
 
   // Build nodeResults and nodeNames from store simulation results
   const storeNodeResults = useMemo(() => {
@@ -549,13 +551,28 @@ export function DemoResultsPanel() {
             border: '1px solid rgba(0,229,255,0.1)',
           }}
         >
-          <div className="text-[12px] font-mono text-cyan-400 font-medium">
-            Simulation Complete
-          </div>
-          <div className="text-[10px] font-mono text-slate-500 mt-0.5">
-            6U CubeSat · 400km LEO · 3 orbits · 277 min
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[12px] font-mono text-cyan-400 font-medium">
+                Simulation Complete
+              </div>
+              <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                6U CubeSat · 400km LEO · 3 orbits · 277 min
+              </div>
+            </div>
+            <OrbitViewToggle
+              isActive={showOrbitView}
+              onToggle={() => setShowOrbitView(!showOrbitView)}
+            />
           </div>
         </div>
+
+        {/* Orbit Playback View */}
+        {showOrbitView && (
+          <div className="rounded-md overflow-hidden" style={{ height: '360px', border: '1px solid rgba(0,229,255,0.1)' }}>
+            <OrbitPlayback />
+          </div>
+        )}
 
         {/* What-If Temperature Chart (from store data) */}
         {storeNodeResults && (
