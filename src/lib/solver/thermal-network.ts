@@ -12,6 +12,7 @@ import {
   generateOrbitalHeatProfile,
 } from './orbital-environment';
 import { solveTransient } from './rk4-solver';
+import { solveImplicitEuler } from './implicit-euler';
 import { solveSteadyState } from './steady-state-solver';
 
 // Database row types (partial, matching schema)
@@ -185,6 +186,9 @@ export function runSimulation(
   }
 
   if (config.simulationType === 'transient') {
+    if (config.solverMethod === 'implicit_euler') {
+      return solveImplicitEuler(network, config);
+    }
     return solveTransient(network, config);
   } else {
     return solveSteadyState(network, config);

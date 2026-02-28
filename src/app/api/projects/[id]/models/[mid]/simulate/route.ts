@@ -125,6 +125,7 @@ export async function POST(
       // Configure solver
       const simConfig: SimulationConfig = {
         simulationType: parsed.data.simulationType,
+        solverMethod: parsed.data.solverMethod ?? 'rk4',
         timeStart: parsed.data.config.timeStart,
         timeEnd: parsed.data.config.timeEnd,
         timeStep: parsed.data.config.timeStep,

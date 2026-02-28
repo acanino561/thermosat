@@ -2,9 +2,12 @@ import { z } from 'zod';
 
 export const simulationTypeSchema = z.enum(['transient', 'steady_state']);
 
+export const solverMethodSchema = z.enum(['rk4', 'implicit_euler']).optional();
+
 export const runSimulationSchema = z
   .object({
     simulationType: simulationTypeSchema,
+    solverMethod: solverMethodSchema,
     config: z.object({
       timeStart: z.number().min(0).default(0),
       timeEnd: z.number().positive().default(3600),

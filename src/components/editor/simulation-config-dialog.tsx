@@ -100,6 +100,9 @@ export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigD
   const [albedo, setAlbedo] = useState(0.30);
   const [earthIR, setEarthIR] = useState(226);
 
+  // Solver method
+  const [solverMethod, setSolverMethod] = useState<'rk4' | 'implicit_euler'>('rk4');
+
   // Simulation type
   const [simType, setSimType] = useState<'transient' | 'steady_state'>('transient');
 
@@ -223,6 +226,7 @@ export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigD
     const config = simType === 'transient'
       ? {
           simulationType: 'transient' as const,
+          solverMethod,
           config: {
             timeStart: 0,
             timeEnd: duration,
@@ -302,7 +306,7 @@ export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigD
       useEditorStore.setState({ simulationStatus: 'failed' });
     }
   }, [
-    projectId, modelId, validation, simType, duration, timeStep, transientTolerance,
+    projectId, modelId, validation, simType, solverMethod, duration, timeStep, transientTolerance,
     minStep, maxStep, maxIterations, ssTolerance, startPolling,
   ]);
 
@@ -399,6 +403,21 @@ export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigD
           <TabsContent value="solver" className="space-y-4 mt-4">
             {simType === 'transient' ? (
               <>
+                <div className="space-y-1.5 mb-2">
+                  <Label htmlFor="solverMethod" className="text-xs">Solver Method</Label>
+                  <Select value={solverMethod} onValueChange={(v) => setSolverMethod(v as 'rk4' | 'implicit_euler')}>
+                    <SelectTrigger id="solverMethod">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="rk4">Explicit RK4 (default)</SelectItem>
+                      <SelectItem value="implicit_euler">Implicit Euler (stiff systems)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">
+                    Implicit Euler handles large capacitance ratios better but is slower per step.
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="duration" className="text-xs">Duration (seconds)</Label>

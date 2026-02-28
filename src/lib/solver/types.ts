@@ -113,8 +113,11 @@ export interface ThermalNetwork {
 
 // ── Simulation Config ───────────────────────────────────────────────────────
 
+export type SolverMethod = 'rk4' | 'implicit_euler';
+
 export interface SimulationConfig {
   simulationType: 'transient' | 'steady_state';
+  solverMethod?: SolverMethod;
   timeStart: number; // seconds
   timeEnd: number; // seconds
   timeStep: number; // seconds (initial step for adaptive)
