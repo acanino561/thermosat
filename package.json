@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "npx tsx src/scripts/seed-materials.ts",
-    "test:solver": "npx tsx src/scripts/test-solver.ts"
+    "test:solver": "npx tsx src/scripts/test-solver.ts",
+    "postinstall": "cp node_modules/occt-import-js/dist/occt-import-js.wasm public/wasm/ && cp node_modules/occt-import-js/dist/occt-import-js.js public/wasm/"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
