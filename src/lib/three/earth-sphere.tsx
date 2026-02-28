@@ -23,6 +23,7 @@ interface EarthSphereProps {
 export function EarthSphere({ sunDirection }: EarthSphereProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
+  const terminatorRef = useRef<THREE.Mesh>(null);
 
   // Load textures
   const dayTexture = useLoader(THREE.TextureLoader, DAY_TEXTURE_URL);
@@ -41,10 +42,23 @@ export function EarthSphere({ sunDirection }: EarthSphereProps) {
     };
   }, [dayTexture, specularTexture]);
 
-  // Slow rotation
+  // Terminator orientation quaternion
+  const terminatorQuaternion = useMemo(() => {
+    if (!sunDirection) return new THREE.Quaternion();
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), sunDirection.clone().negate());
+    return q;
+  }, [sunDirection]);
+
+  // Slow rotation + terminator update
   useFrame((state) => {
     if (meshRef.current) {
       meshRef.current.rotation.y = state.clock.elapsedTime * 0.01;
+    }
+    if (terminatorRef.current && sunDirection) {
+      const q = new THREE.Quaternion();
+      q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), sunDirection.clone().negate());
+      terminatorRef.current.quaternion.copy(q);
     }
   });
 
@@ -86,6 +100,20 @@ export function EarthSphere({ sunDirection }: EarthSphereProps) {
           blending={THREE.AdditiveBlending}
         />
       </mesh>
+
+      {/* Terminator line — ring perpendicular to sun direction */}
+      {sunDirection && (
+        <mesh ref={terminatorRef} quaternion={terminatorQuaternion}>
+          <ringGeometry args={[6.4, 6.5, 128]} />
+          <meshBasicMaterial
+            color="#ffdd44"
+            opacity={0.4}
+            transparent
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
     </group>
   );
 }

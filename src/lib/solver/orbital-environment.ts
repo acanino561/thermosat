@@ -301,6 +301,27 @@ export function calculateOrbitalEnvironment(
 }
 
 /**
+ * Calculate the Sun's ECI direction vector for a given orbital config and elapsed time.
+ * Returns a normalized THREE-compatible {x, y, z} object.
+ */
+export function computeSunDirectionAtTime(
+  config: OrbitalConfig,
+  elapsedSeconds: number,
+): { x: number; y: number; z: number } {
+  const epochDate = new Date(config.epoch);
+  const currentDate = new Date(epochDate.getTime() + elapsedSeconds * 1000);
+  const sunPos = getSunPosition(currentDate);
+
+  // Sun direction in ECI: convert RA/Dec to unit vector
+  const x = Math.cos(sunPos.declination) * Math.cos(sunPos.rightAscension);
+  const y = Math.sin(sunPos.declination);
+  const z = Math.cos(sunPos.declination) * Math.sin(sunPos.rightAscension);
+
+  const len = Math.sqrt(x * x + y * y + z * z);
+  return { x: x / len, y: y / len, z: z / len };
+}
+
+/**
  * Generate time-varying heat load profile over one orbit.
  * Discretizes the orbit into N steps and computes fluxes at each step.
  */
