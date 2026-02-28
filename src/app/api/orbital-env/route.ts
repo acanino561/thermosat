@@ -31,10 +31,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const config = {
+      orbitType: parsed.data.orbitType as 'leo' | 'meo' | 'geo' | 'heo' | undefined,
       altitude: parsed.data.altitude,
       inclination: parsed.data.inclination,
       raan: parsed.data.raan,
       epoch: parsed.data.epoch,
+      apogeeAltitude: parsed.data.apogeeAltitude,
+      perigeeAltitude: parsed.data.perigeeAltitude,
     };
 
     const environment = calculateOrbitalEnvironment(config);

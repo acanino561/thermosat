@@ -57,10 +57,13 @@ export interface HeatLoad {
 }
 
 export interface OrbitalConfig {
+  orbitType?: 'leo' | 'meo' | 'geo' | 'heo';
   altitude: number;
   inclination: number;
   raan: number;
   epoch: string;
+  apogeeAltitude?: number;
+  perigeeAltitude?: number;
 }
 
 export interface NodeTemperatureHistory {

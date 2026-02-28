@@ -36,6 +36,7 @@ import {
 import { useEditorStore } from '@/lib/stores/editor-store';
 import type { ValidationResult, ValidationError } from '@/app/api/projects/[id]/models/[mid]/validate/route';
 
+type OrbitType = 'leo' | 'meo' | 'geo' | 'heo';
 type EnvironmentPresetName = 'hot' | 'cold' | 'nominal' | 'custom';
 
 interface EnvironmentPreset {
@@ -80,7 +81,7 @@ interface SimulationConfigDialogProps {
 }
 
 export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigDialogProps) {
-  const { projectId, modelId, simulationStatus } = useEditorStore();
+  const { projectId, modelId, simulationStatus, orbitalConfig } = useEditorStore();
 
   // Transient config
   const [duration, setDuration] = useState(3600);
@@ -99,6 +100,13 @@ export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigD
   const [solarFlux, setSolarFlux] = useState(1367);
   const [albedo, setAlbedo] = useState(0.30);
   const [earthIR, setEarthIR] = useState(226);
+
+  // Orbit type
+  const [orbitType, setOrbitType] = useState<OrbitType>((orbitalConfig?.orbitType as OrbitType) ?? 'leo');
+  const [orbitAltitude, setOrbitAltitude] = useState(orbitalConfig?.altitude ?? 400);
+  const [orbitInclination, setOrbitInclination] = useState(orbitalConfig?.inclination ?? 51.6);
+  const [apogeeAltitude, setApogeeAltitude] = useState(orbitalConfig?.apogeeAltitude ?? 40000);
+  const [perigeeAltitude, setPerigeeAltitude] = useState(orbitalConfig?.perigeeAltitude ?? 1000);
 
   // Solver method
   const [solverMethod, setSolverMethod] = useState<'rk4' | 'implicit_euler'>('rk4');
@@ -223,6 +231,29 @@ export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigD
     setRunProgress(0);
     useEditorStore.setState({ simulationStatus: 'running' });
 
+    // Save orbital config to model before running
+    const orbitalPayload: Record<string, unknown> = {
+      orbitType,
+      altitude: orbitType === 'geo' ? 35786 : orbitType === 'heo' ? (apogeeAltitude + perigeeAltitude) / 2 : orbitAltitude,
+      inclination: orbitType === 'geo' ? 0 : orbitInclination,
+      raan: 0,
+      epoch: new Date().toISOString(),
+    };
+    if (orbitType === 'heo') {
+      orbitalPayload.apogeeAltitude = apogeeAltitude;
+      orbitalPayload.perigeeAltitude = perigeeAltitude;
+    }
+
+    try {
+      await fetch(`/api/projects/${projectId}/models/${modelId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orbitalConfig: orbitalPayload }),
+      });
+    } catch {
+      // Continue with simulation even if orbital config save fails
+    }
+
     const config = simType === 'transient'
       ? {
           simulationType: 'transient' as const,
@@ -307,7 +338,8 @@ export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigD
     }
   }, [
     projectId, modelId, validation, simType, solverMethod, duration, timeStep, transientTolerance,
-    minStep, maxStep, maxIterations, ssTolerance, startPolling,
+    minStep, maxStep, maxIterations, ssTolerance, startPolling, orbitType, orbitAltitude,
+    orbitInclination, apogeeAltitude, perigeeAltitude,
   ]);
 
   // Cancel simulation
@@ -511,6 +543,112 @@ export function SimulationConfigDialog({ open, onOpenChange }: SimulationConfigD
 
           {/* Environment Tab */}
           <TabsContent value="environment" className="space-y-4 mt-4">
+            {/* Orbit Type Configuration */}
+            <div className="space-y-3">
+              <Label className="text-xs font-medium">Orbit Type</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {(['leo', 'meo', 'geo', 'heo'] as const).map((type) => (
+                  <Button
+                    key={type}
+                    variant={orbitType === type ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setOrbitType(type);
+                      if (type === 'geo') {
+                        setOrbitAltitude(35786);
+                        setOrbitInclination(0);
+                      }
+                    }}
+                  >
+                    {type.toUpperCase()}
+                  </Button>
+                ))}
+              </div>
+
+              {orbitType === 'heo' && (
+                <div className="space-y-3 p-3 rounded bg-muted/50">
+                  <div className="flex gap-2 mb-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setApogeeAltitude(40000);
+                        setPerigeeAltitude(1000);
+                        setOrbitInclination(63.4);
+                      }}
+                    >
+                      Molniya Preset
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setApogeeAltitude(47100);
+                        setPerigeeAltitude(24000);
+                        setOrbitInclination(63.4);
+                      }}
+                    >
+                      Tundra Preset
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="apogeeAlt" className="text-xs">Apogee Altitude (km)</Label>
+                      <Input
+                        id="apogeeAlt"
+                        type="number"
+                        value={apogeeAltitude}
+                        onChange={(e) => setApogeeAltitude(Number(e.target.value))}
+                        min={200}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="perigeeAlt" className="text-xs">Perigee Altitude (km)</Label>
+                      <Input
+                        id="perigeeAlt"
+                        type="number"
+                        value={perigeeAltitude}
+                        onChange={(e) => setPerigeeAltitude(Number(e.target.value))}
+                        min={160}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(orbitType === 'leo' || orbitType === 'meo') && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="orbitAlt" className="text-xs">Altitude (km)</Label>
+                    <Input
+                      id="orbitAlt"
+                      type="number"
+                      value={orbitAltitude}
+                      onChange={(e) => setOrbitAltitude(Number(e.target.value))}
+                      min={160}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="orbitIncl" className="text-xs">Inclination (°)</Label>
+                    <Input
+                      id="orbitIncl"
+                      type="number"
+                      value={orbitInclination}
+                      onChange={(e) => setOrbitInclination(Number(e.target.value))}
+                      min={0}
+                      max={180}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {orbitType === 'geo' && (
+                <div className="text-xs text-muted-foreground p-2 rounded bg-muted/50">
+                  GEO: Fixed altitude 35,786 km, 24h period. Eclipse only during equinox seasons (±23 days).
+                </div>
+              )}
+            </div>
+
             <div className="space-y-3">
               <Label className="text-xs font-medium">Environment Preset</Label>
               <div className="grid grid-cols-3 gap-2">

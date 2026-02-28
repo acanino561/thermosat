@@ -131,6 +131,67 @@ function calculateEclipseFraction(
 }
 
 /**
+ * Calculate GEO eclipse fraction based on equinox seasons.
+ * Eclipse only occurs ±23 days around equinoxes (day ~80 and ~266).
+ */
+function calculateGeoEclipseFraction(epochDate: Date): number {
+  const start = new Date(epochDate.getFullYear(), 0, 0);
+  const diff = epochDate.getTime() - start.getTime();
+  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  const EQUINOX_SPRING = 80; // ~March 21
+  const EQUINOX_AUTUMN = 266; // ~September 23
+  const EQUINOX_WINDOW = 23; // days
+
+  const nearSpring = Math.abs(dayOfYear - EQUINOX_SPRING) <= EQUINOX_WINDOW;
+  const nearAutumn = Math.abs(dayOfYear - EQUINOX_AUTUMN) <= EQUINOX_WINDOW;
+
+  return (nearSpring || nearAutumn) ? 0.05 : 0;
+}
+
+/**
+ * Calculate HEO orbital period using Kepler's third law.
+ * T = 2π * sqrt(a³ / GM)
+ */
+function calculateHeoOrbitalPeriod(apogeeAltKm: number, perigeeAltKm: number): number {
+  const rApogee = (EARTH_RADIUS_KM + apogeeAltKm) * 1000; // meters
+  const rPerigee = (EARTH_RADIUS_KM + perigeeAltKm) * 1000; // meters
+  const a = (rApogee + rPerigee) / 2; // semi-major axis
+  return 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / EARTH_MU);
+}
+
+/**
+ * Calculate HEO eccentricity.
+ */
+function calculateHeoEccentricity(apogeeAltKm: number, perigeeAltKm: number): number {
+  const rApogee = EARTH_RADIUS_KM + apogeeAltKm;
+  const rPerigee = EARTH_RADIUS_KM + perigeeAltKm;
+  return (rApogee - rPerigee) / (rApogee + rPerigee);
+}
+
+/**
+ * Calculate HEO eclipse fraction using simplified model.
+ * Eclipse mainly occurs near perigee. Weighted by time fraction spent near perigee.
+ */
+function calculateHeoEclipseFraction(
+  apogeeAltKm: number,
+  perigeeAltKm: number,
+  betaAngleDeg: number,
+): number {
+  // Eclipse fraction at perigee altitude (as if circular orbit at perigee)
+  const perigeeEclipse = calculateEclipseFraction(perigeeAltKm, betaAngleDeg);
+
+  // Fraction of time spent near perigee — approximated from eccentricity
+  // For highly elliptical orbits, spacecraft spends most time near apogee
+  // perigee_time_fraction ≈ (1 - e)^(3/2) / (1 + e)^(3/2) is one approximation
+  // Simpler: use ~1/6 for Molniya-class, scale with eccentricity
+  const e = calculateHeoEccentricity(apogeeAltKm, perigeeAltKm);
+  const perigeeTimeFraction = Math.pow((1 - e) / (1 + e), 1.5);
+
+  return perigeeEclipse * perigeeTimeFraction;
+}
+
+/**
  * Calculate complete orbital environment from configuration.
  */
 export function calculateOrbitalEnvironment(
@@ -138,7 +199,79 @@ export function calculateOrbitalEnvironment(
 ): OrbitalEnvironment {
   const epochDate = new Date(config.epoch);
   const sunPos = getSunPosition(epochDate);
+  const orbitType = config.orbitType ?? 'leo';
 
+  // Solar flux with seasonal distance correction (same for all orbit types)
+  const solarFlux = SOLAR_CONSTANT / Math.pow(sunPos.earthSunDistance, 2);
+
+  if (orbitType === 'geo') {
+    const GEO_ALTITUDE = 35786; // km
+    const orbitalPeriod = 86400; // 24 hours exactly
+    const betaAngle = calculateBetaAngle(
+      config.inclination,
+      config.raan,
+      sunPos.declination,
+      sunPos.rightAscension,
+    );
+    const eclipseFraction = calculateGeoEclipseFraction(epochDate);
+    const earthViewFactor = calculateEarthViewFactor(GEO_ALTITUDE);
+
+    // Albedo negligible at GEO altitude
+    const albedoFlux = 0;
+
+    // Earth IR reduced by inverse square of distance
+    const r = EARTH_RADIUS_KM + GEO_ALTITUDE;
+    const earthIRFlux = EARTH_IR * Math.pow(EARTH_RADIUS_KM / r, 2);
+
+    return {
+      orbitalPeriod,
+      betaAngle,
+      eclipseFraction,
+      solarFlux,
+      albedoFlux,
+      earthIR: earthIRFlux,
+      earthViewFactor,
+      sunlitFraction: 1 - eclipseFraction,
+    };
+  }
+
+  if (orbitType === 'heo') {
+    const apogeeAlt = config.apogeeAltitude!;
+    const perigeeAlt = config.perigeeAltitude!;
+
+    const orbitalPeriod = calculateHeoOrbitalPeriod(apogeeAlt, perigeeAlt);
+    const betaAngle = calculateBetaAngle(
+      config.inclination,
+      config.raan,
+      sunPos.declination,
+      sunPos.rightAscension,
+    );
+    const eclipseFraction = calculateHeoEclipseFraction(apogeeAlt, perigeeAlt, betaAngle);
+
+    // Use average altitude for albedo/OLR
+    const avgAltitude = (apogeeAlt + perigeeAlt) / 2;
+    const earthViewFactor = calculateEarthViewFactor(avgAltitude);
+
+    // Albedo reduced at high altitude
+    const albedoFlux = EARTH_ALBEDO * solarFlux * earthViewFactor;
+
+    // Earth IR reduced by altitude
+    const r = EARTH_RADIUS_KM + avgAltitude;
+    const earthIRFlux = EARTH_IR * Math.pow(EARTH_RADIUS_KM / r, 2);
+
+    return {
+      orbitalPeriod,
+      betaAngle,
+      eclipseFraction,
+      solarFlux,
+      albedoFlux,
+      earthIR: earthIRFlux,
+      earthViewFactor,
+      sunlitFraction: 1 - eclipseFraction,
+    };
+  }
+
+  // LEO / MEO (existing behavior)
   const orbitalPeriod = calculateOrbitalPeriod(config.altitude);
   const betaAngle = calculateBetaAngle(
     config.inclination,
@@ -148,9 +281,6 @@ export function calculateOrbitalEnvironment(
   );
   const eclipseFraction = calculateEclipseFraction(config.altitude, betaAngle);
   const earthViewFactor = calculateEarthViewFactor(config.altitude);
-
-  // Solar flux with seasonal distance correction
-  const solarFlux = SOLAR_CONSTANT / Math.pow(sunPos.earthSunDistance, 2);
 
   // Peak albedo flux (at subsolar point)
   const albedoFlux = EARTH_ALBEDO * solarFlux * earthViewFactor;

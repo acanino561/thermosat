@@ -198,7 +198,21 @@ export async function POST(
     }
 
     if (orbitalConfig) {
-      if (!orbitalConfig.altitude || orbitalConfig.altitude <= 0) {
+      if (orbitalConfig.orbitType === 'heo') {
+        if (!orbitalConfig.apogeeAltitude || !orbitalConfig.perigeeAltitude) {
+          errors.push({
+            type: 'error',
+            category: 'orbital',
+            message: 'HEO orbits require apogee and perigee altitudes',
+          });
+        } else if (orbitalConfig.apogeeAltitude <= orbitalConfig.perigeeAltitude) {
+          errors.push({
+            type: 'error',
+            category: 'orbital',
+            message: 'Apogee altitude must be greater than perigee altitude',
+          });
+        }
+      } else if (!orbitalConfig.altitude || orbitalConfig.altitude <= 0) {
         errors.push({
           type: 'error',
           category: 'orbital',

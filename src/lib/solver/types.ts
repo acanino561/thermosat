@@ -70,11 +70,16 @@ export interface SolverHeatLoad {
 
 // ── Orbital Environment ─────────────────────────────────────────────────────
 
+export type OrbitType = 'leo' | 'meo' | 'geo' | 'heo';
+
 export interface OrbitalConfig {
-  altitude: number; // km
+  orbitType?: OrbitType; // defaults to 'leo' for backward compat
+  altitude: number; // km (used for LEO/MEO/GEO)
   inclination: number; // degrees
   raan: number; // degrees
   epoch: string; // ISO date
+  apogeeAltitude?: number; // km (HEO only)
+  perigeeAltitude?: number; // km (HEO only)
 }
 
 export interface OrbitalEnvironment {

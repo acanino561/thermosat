@@ -64,9 +64,26 @@ export function ModelOverview() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Altitude (km)</Label>
-              <div className="text-sm font-mono">{orbitalConfig.altitude}</div>
+              <Label className="text-xs">Orbit Type</Label>
+              <div className="text-sm font-mono">{(orbitalConfig.orbitType ?? 'leo').toUpperCase()}</div>
             </div>
+            {orbitalConfig.orbitType === 'heo' ? (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs">Apogee (km)</Label>
+                  <div className="text-sm font-mono">{orbitalConfig.apogeeAltitude}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Perigee (km)</Label>
+                  <div className="text-sm font-mono">{orbitalConfig.perigeeAltitude}</div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-1">
+                <Label className="text-xs">Altitude (km)</Label>
+                <div className="text-sm font-mono">{orbitalConfig.altitude}</div>
+              </div>
+            )}
             <div className="space-y-1">
               <Label className="text-xs">Inclination (°)</Label>
               <div className="text-sm font-mono">{orbitalConfig.inclination}</div>
