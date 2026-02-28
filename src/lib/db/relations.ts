@@ -13,6 +13,7 @@ import {
   simulationConfigs,
   simulationRuns,
   simulationResults,
+  sensitivityMatrices,
 } from './schema';
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -146,6 +147,17 @@ export const simulationRunsRelations = relations(
       references: [simulationConfigs.id],
     }),
     results: many(simulationResults),
+    sensitivityMatrices: many(sensitivityMatrices),
+  }),
+);
+
+export const sensitivityMatricesRelations = relations(
+  sensitivityMatrices,
+  ({ one }) => ({
+    run: one(simulationRuns, {
+      fields: [sensitivityMatrices.runId],
+      references: [simulationRuns.id],
+    }),
   }),
 );
 

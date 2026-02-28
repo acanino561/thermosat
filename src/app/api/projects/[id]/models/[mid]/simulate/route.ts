@@ -21,6 +21,8 @@ import {
 } from '@/lib/utils/api-helpers';
 import { buildThermalNetwork, runSimulation } from '@/lib/solver/thermal-network';
 import { computeEnergyBalance } from '@/lib/solver/energy-balance';
+import { computeSensitivityMatrix } from '@/lib/solver/sensitivity';
+import { sensitivityMatrices } from '@/lib/db/schema';
 import type { OrbitalConfig, SimulationConfig } from '@/lib/solver/types';
 
 interface RouteParams {
@@ -215,6 +217,33 @@ export async function POST(
           energyBalanceError: energyBalance.relativeError,
         })
         .where(eq(simulationRuns.id, run.id));
+
+      // Kick off sensitivity computation in background (non-blocking)
+      try {
+        const [sensRow] = await db
+          .insert(sensitivityMatrices)
+          .values({
+            runId: run.id,
+            status: 'pending',
+          })
+          .returning();
+
+        // Fire and forget — runs after response is sent
+        setTimeout(() => {
+          computeSensitivityMatrix(
+            sensRow.id,
+            nodes,
+            modelConductors,
+            loads,
+            (model.orbitalConfig as OrbitalConfig) ?? null,
+          ).catch((err) => {
+            console.error('Background sensitivity computation error:', err);
+          });
+        }, 0);
+      } catch (sensErr) {
+        // Sensitivity failure should never block the simulation response
+        console.error('Failed to initiate sensitivity computation:', sensErr);
+      }
 
       return NextResponse.json({
         run: {
