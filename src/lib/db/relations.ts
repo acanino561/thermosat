@@ -10,6 +10,7 @@ import {
   conductors,
   heatLoads,
   materials,
+  simulationConfigs,
   simulationRuns,
   simulationResults,
 } from './schema';
@@ -55,6 +56,7 @@ export const thermalModelsRelations = relations(
     conductors: many(conductors),
     heatLoads: many(heatLoads),
     snapshots: many(modelSnapshots),
+    simulationConfigs: many(simulationConfigs),
     simulationRuns: many(simulationRuns),
   }),
 );
@@ -121,12 +123,27 @@ export const materialsRelations = relations(materials, ({ one }) => ({
   }),
 }));
 
+export const simulationConfigsRelations = relations(
+  simulationConfigs,
+  ({ one, many }) => ({
+    model: one(thermalModels, {
+      fields: [simulationConfigs.modelId],
+      references: [thermalModels.id],
+    }),
+    runs: many(simulationRuns),
+  }),
+);
+
 export const simulationRunsRelations = relations(
   simulationRuns,
   ({ one, many }) => ({
     model: one(thermalModels, {
       fields: [simulationRuns.modelId],
       references: [thermalModels.id],
+    }),
+    config: one(simulationConfigs, {
+      fields: [simulationRuns.configId],
+      references: [simulationConfigs.id],
     }),
     results: many(simulationResults),
   }),

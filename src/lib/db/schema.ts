@@ -46,6 +46,7 @@ export const simulationStatusEnum = pgEnum('simulation_status', [
   'running',
   'completed',
   'failed',
+  'cancelled',
 ]);
 
 export const simulationTypeEnum = pgEnum('simulation_type', [
@@ -319,7 +320,7 @@ export const materials = pgTable(
   }),
 );
 
-export interface SimulationConfig {
+export interface SimulationConfigData {
   timeStart: number; // seconds
   timeEnd: number; // seconds
   timeStep: number; // seconds
@@ -327,7 +328,48 @@ export interface SimulationConfig {
   tolerance: number;
   minStep?: number;
   maxStep?: number;
+  outputInterval?: number; // seconds, how often to record results
 }
+
+export interface EnvironmentPreset {
+  name: 'hot' | 'cold' | 'nominal' | 'custom';
+  solarFlux: number; // W/m²
+  albedo: number;
+  earthIR: number; // W/m²
+}
+
+export interface SimulationConfigFull {
+  transient: {
+    duration: number; // seconds
+    timeStep: number; // seconds
+    outputInterval: number; // seconds
+    tolerance: number;
+    minStep?: number;
+    maxStep?: number;
+  };
+  steadyState: {
+    maxIterations: number;
+    tolerance: number;
+  };
+  environment: EnvironmentPreset;
+}
+
+export const simulationConfigs = pgTable(
+  'simulation_configs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    name: text('name').notNull().default('Default'),
+    config: jsonb('config').$type<SimulationConfigFull>().notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    modelIdIdx: index('simulation_configs_model_id_idx').on(table.modelId),
+  }),
+);
 
 export const simulationRuns = pgTable(
   'simulation_runs',
@@ -336,9 +378,12 @@ export const simulationRuns = pgTable(
     modelId: uuid('model_id')
       .notNull()
       .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    configId: uuid('config_id')
+      .references(() => simulationConfigs.id, { onDelete: 'set null' }),
     status: simulationStatusEnum('status').default('pending').notNull(),
     simulationType: simulationTypeEnum('simulation_type').notNull(),
-    config: jsonb('config').$type<SimulationConfig>().notNull(),
+    config: jsonb('config').$type<SimulationConfigData>().notNull(),
+    progress: integer('progress').default(0).notNull(),
     startedAt: timestamp('started_at', { mode: 'date' }),
     completedAt: timestamp('completed_at', { mode: 'date' }),
     errorMessage: text('error_message'),

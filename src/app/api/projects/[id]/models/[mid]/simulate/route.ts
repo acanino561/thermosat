@@ -92,14 +92,22 @@ export async function POST(
       .insert(simulationRuns)
       .values({
         modelId: mid,
+        configId: (parsed.data as any).configId ?? null,
         status: 'running',
         simulationType: parsed.data.simulationType,
         config: parsed.data.config,
+        progress: 0,
         startedAt: new Date(),
       })
       .returning();
 
     try {
+      // Update progress to 10% — model loaded, network being built
+      await db
+        .update(simulationRuns)
+        .set({ progress: 10 })
+        .where(eq(simulationRuns.id, run.id));
+
       // Build thermal network
       const network = buildThermalNetwork(
         nodes,
@@ -107,6 +115,12 @@ export async function POST(
         loads,
         (model.orbitalConfig as OrbitalConfig) ?? null,
       );
+
+      // Update progress to 20% — network built, starting solver
+      await db
+        .update(simulationRuns)
+        .set({ progress: 20 })
+        .where(eq(simulationRuns.id, run.id));
 
       // Configure solver
       const simConfig: SimulationConfig = {
@@ -120,18 +134,36 @@ export async function POST(
         maxStep: parsed.data.config.maxStep ?? parsed.data.config.timeStep * 10,
       };
 
-      // Run simulation with timeout
+      // Check if run has been cancelled before starting solver
+      const [currentRun] = await db
+        .select({ status: simulationRuns.status })
+        .from(simulationRuns)
+        .where(eq(simulationRuns.id, run.id));
+      if (currentRun?.status === 'cancelled') {
+        return NextResponse.json({
+          run: { ...run, status: 'cancelled' },
+          summary: { cancelled: true },
+        });
+      }
+
+      // Run simulation
       const startTime = Date.now();
       const result = runSimulation(network, simConfig);
       const elapsed = Date.now() - startTime;
 
+      // Update progress to 80% — solver done, storing results
+      await db
+        .update(simulationRuns)
+        .set({ progress: 80 })
+        .where(eq(simulationRuns.id, run.id));
+
       if (elapsed > MAX_SIMULATION_TIME_MS) {
-        // Mark as failed if it took too long (shouldn't happen in sync but safeguard)
         await db
           .update(simulationRuns)
           .set({
             status: 'failed',
             completedAt: new Date(),
+            progress: 100,
             errorMessage: 'Simulation exceeded time limit',
           })
           .where(eq(simulationRuns.id, run.id));
@@ -172,12 +204,13 @@ export async function POST(
         });
       }
 
-      // Update run status
+      // Update run status — completed
       await db
         .update(simulationRuns)
         .set({
           status: 'completed',
           completedAt: new Date(),
+          progress: 100,
           energyBalanceError: energyBalance.relativeError,
         })
         .where(eq(simulationRuns.id, run.id));
@@ -187,6 +220,7 @@ export async function POST(
           ...run,
           status: 'completed',
           completedAt: new Date(),
+          progress: 100,
           energyBalanceError: energyBalance.relativeError,
         },
         summary: {
@@ -203,7 +237,6 @@ export async function POST(
         },
       });
     } catch (simError) {
-      // Mark run as failed
       const errorMessage =
         simError instanceof Error ? simError.message : 'Unknown simulation error';
 
@@ -212,6 +245,7 @@ export async function POST(
         .set({
           status: 'failed',
           completedAt: new Date(),
+          progress: 100,
           errorMessage,
         })
         .where(eq(simulationRuns.id, run.id));
