@@ -370,7 +370,7 @@ function CameraController({ nodePositions }: { nodePositions: Map<string, THREE.
     };
 
     // Clear preset so it can be re-triggered
-    setCameraPreset(null as any);
+    setCameraPreset(null);
   }, [cameraPreset, camera, controls, setCameraPreset]);
 
   // Handle focus on node

@@ -261,7 +261,7 @@ interface EditorState {
   setRenderMode: (mode: RenderMode) => void;
   setColorScale: (scale: ColorScale) => void;
   setThermalRange: (range: Partial<ThermalRange>) => void;
-  setCameraPreset: (preset: CameraPreset) => void;
+  setCameraPreset: (preset: CameraPreset | null) => void;
   cameraPreset: CameraPreset | null;
   focusOnNode: (nodeId: string) => void;
 
