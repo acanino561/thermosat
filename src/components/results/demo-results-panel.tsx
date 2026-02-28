@@ -23,7 +23,10 @@ import {
   isInEclipse,
 } from '@/lib/demo/simulation-data';
 import { useTimelineStore } from '@/lib/stores/timeline-store';
+import { useEditorStore } from '@/lib/stores/editor-store';
 import { cn } from '@/lib/utils';
+import { TemperatureChart as WhatIfTemperatureChart } from '@/components/results/temperature-chart';
+import { ResultsTable } from '@/components/results/results-table';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -508,6 +511,30 @@ function ThermalLegend() {
 // ─── Main Results Panel ──────────────────────────────────────────────
 
 export function DemoResultsPanel() {
+  const simulationResults = useEditorStore((s) => s.simulationResults);
+  const nodes = useEditorStore((s) => s.nodes);
+  const whatIfSensitivityEntries = useEditorStore((s) => s.whatIfSensitivityEntries);
+  const comparisonResults = useEditorStore((s) => s.comparisonResults);
+
+  // Build nodeResults and nodeNames from store simulation results
+  const storeNodeResults = useMemo(() => {
+    if (!simulationResults) return null;
+    return simulationResults.nodeResults;
+  }, [simulationResults]);
+
+  const storeNodeNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const node of nodes) {
+      names[node.id] = node.name;
+    }
+    return names;
+  }, [nodes]);
+
+  const comparisonNodeResults = useMemo(() => {
+    if (!comparisonResults) return null;
+    return comparisonResults.nodeResults;
+  }, [comparisonResults]);
+
   return (
     <div
       className="h-full overflow-y-auto custom-scrollbar"
@@ -529,6 +556,26 @@ export function DemoResultsPanel() {
             6U CubeSat · 400km LEO · 3 orbits · 277 min
           </div>
         </div>
+
+        {/* What-If Temperature Chart (from store data) */}
+        {storeNodeResults && (
+          <WhatIfTemperatureChart
+            nodeResults={storeNodeResults}
+            nodeNames={storeNodeNames}
+            comparisonNodeResults={comparisonNodeResults}
+            sensitivityEntries={whatIfSensitivityEntries.length > 0 ? whatIfSensitivityEntries : undefined}
+          />
+        )}
+
+        {/* What-If Results Table (from store data) */}
+        {storeNodeResults && (
+          <ResultsTable
+            nodeResults={storeNodeResults}
+            nodeNames={storeNodeNames}
+            comparisonNodeResults={comparisonNodeResults}
+            sensitivityEntries={whatIfSensitivityEntries.length > 0 ? whatIfSensitivityEntries : undefined}
+          />
+        )}
 
         {/* Temperature chart */}
         <TemperatureChart />

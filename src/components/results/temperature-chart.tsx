@@ -16,9 +16,11 @@ import {
 } from 'recharts';
 import { useUnits } from '@/lib/hooks/use-units';
 import { useEditorStore } from '@/lib/stores/editor-store';
+import { computeWhatIfTemps, type SensitivityEntry } from '@/lib/what-if/sensitivity-calc';
 
 const COLORS = ['#3b82f6', '#06b6d4', '#f97316', '#22c55e', '#a855f7', '#ef4444', '#eab308', '#ec4899'];
 const COMPARISON_COLORS = ['#93c5fd', '#67e8f9', '#fdba74', '#86efac', '#d8b4fe', '#fca5a5', '#fde047', '#f9a8d4'];
+const WHATIF_COLOR = '#f59e0b'; // amber for What If traces
 
 interface EclipsePeriod {
   start: number; // seconds
@@ -30,6 +32,7 @@ interface TemperatureChartProps {
   nodeNames: Record<string, string>;
   eclipsePeriods?: EclipsePeriod[];
   comparisonNodeResults?: Record<string, { times: number[]; temperatures: number[] }> | null;
+  sensitivityEntries?: SensitivityEntry[];
 }
 
 export function TemperatureChart({
@@ -37,11 +40,14 @@ export function TemperatureChart({
   nodeNames,
   eclipsePeriods = [],
   comparisonNodeResults,
+  sensitivityEntries,
 }: TemperatureChartProps) {
   const { label, display } = useUnits();
   const tempLabel = label('Temperature');
   const setCurrentTimestep = useEditorStore((s) => s.setCurrentTimestep);
   const nodeLimits = useEditorStore((s) => s.nodeLimits);
+  const whatIfEnabled = useEditorStore((s) => s.whatIfEnabled);
+  const whatIfDeltas = useEditorStore((s) => s.whatIfDeltas);
 
   const nodeIds = Object.keys(nodeResults);
   if (nodeIds.length === 0) return null;
@@ -67,6 +73,23 @@ export function TemperatureChart({
       return point;
     });
   }, [timeSteps, nodeIds, nodeResults, comparisonNodeResults, display]);
+
+  // Compute What-If temperatures (last timestep + ΔT)
+  const whatIfActive = whatIfEnabled && sensitivityEntries && sensitivityEntries.length > 0
+    && Object.values(whatIfDeltas).some((d) => Math.abs(d) > 1e-12);
+
+  const whatIfFinalTemps = useMemo(() => {
+    if (!whatIfActive || !sensitivityEntries) return null;
+    // Build baseline from last timestep
+    const baseline: Record<string, number> = {};
+    nodeIds.forEach((nodeId) => {
+      const temps = nodeResults[nodeId]?.temperatures;
+      if (temps && temps.length > 0) {
+        baseline[nodeId] = temps[temps.length - 1];
+      }
+    });
+    return computeWhatIfTemps(baseline, sensitivityEntries, whatIfDeltas);
+  }, [whatIfActive, sensitivityEntries, whatIfDeltas, nodeIds, nodeResults]);
 
   // Collect unique limit lines
   const limitLines = useMemo(() => {
@@ -203,6 +226,30 @@ export function TemperatureChart({
                   />
                 ) : null,
               )}
+
+            {/* What If prediction lines (dashed amber) */}
+            {whatIfFinalTemps &&
+              nodeIds.map((nodeId) => {
+                const temp = whatIfFinalTemps[nodeId];
+                if (temp == null) return null;
+                const displayed = display(temp, 'Temperature');
+                return (
+                  <ReferenceLine
+                    key={`wi_${nodeId}`}
+                    y={displayed}
+                    stroke={WHATIF_COLOR}
+                    strokeDasharray="6 3"
+                    strokeWidth={1.5}
+                    strokeOpacity={0.7}
+                    label={{
+                      value: `WI: ${nodeNames[nodeId] || nodeId}`,
+                      position: 'right',
+                      fill: WHATIF_COLOR,
+                      fontSize: 9,
+                    }}
+                  />
+                );
+              })}
 
             {/* Zoom/pan via Brush */}
             <Brush

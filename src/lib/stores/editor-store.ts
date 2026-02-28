@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ColorScale, ThermalRange } from '@/lib/thermal-colors';
+import type { SensitivityEntry } from '@/lib/what-if/sensitivity-calc';
 
 // Types matching the backend schema
 export interface ThermalNode {
@@ -219,11 +220,20 @@ interface EditorState {
   comparisonRunId: string | null;
   nodeLimits: Record<string, { minTemp: number; maxTemp: number }>;
 
+  // What If state
+  whatIfEnabled: boolean;
+  whatIfDeltas: Record<string, number>; // parameterId → Δp
+  whatIfSensitivityEntries: SensitivityEntry[];
+
   // Results viewer actions
   setCurrentTimestep: (timestep: number) => void;
   setComparisonResults: (results: SimulationResults | null) => void;
   setComparisonRunId: (runId: string | null) => void;
   setNodeLimits: (limits: Record<string, { minTemp: number; maxTemp: number }>) => void;
+  setWhatIfEnabled: (enabled: boolean) => void;
+  setWhatIfDeltas: (deltas: Record<string, number>) => void;
+  setWhatIfSensitivityEntries: (entries: SensitivityEntry[]) => void;
+  resetWhatIf: () => void;
 
   // Actions
   loadModel: (projectId: string, modelId: string) => Promise<void>;
@@ -348,11 +358,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   comparisonResults: null,
   comparisonRunId: null,
   nodeLimits: {},
+  whatIfEnabled: false,
+  whatIfDeltas: {},
+  whatIfSensitivityEntries: [],
 
   setCurrentTimestep: (index) => set({ currentTimestep: index }),
   setComparisonResults: (results) => set({ comparisonResults: results }),
   setComparisonRunId: (runId) => set({ comparisonRunId: runId }),
   setNodeLimits: (limits) => set({ nodeLimits: limits }),
+  setWhatIfEnabled: (enabled) => set({ whatIfEnabled: enabled }),
+  setWhatIfDeltas: (deltas) => set({ whatIfDeltas: deltas }),
+  setWhatIfSensitivityEntries: (entries) => set({ whatIfSensitivityEntries: entries }),
+  resetWhatIf: () => set({ whatIfEnabled: false, whatIfDeltas: {}, whatIfSensitivityEntries: [] }),
 
   // Viewport polish
   viewportState: {
