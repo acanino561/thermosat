@@ -64,6 +64,16 @@ export async function GET(
       nodeNameMap.set(node.id, node.name);
     }
 
+    const conductorRows = await db
+      .select()
+      .from(conductors)
+      .where(eq(conductors.modelId, mid));
+
+    const conductorNameMap = new Map<string, string>();
+    for (const c of conductorRows) {
+      conductorNameMap.set(c.id, c.name);
+    }
+
     const url = new URL(request.url);
     const format = url.searchParams.get('format') ?? 'json-results';
     const units = url.searchParams.get('units') ?? 'si';
@@ -72,7 +82,7 @@ export async function GET(
       case 'csv-temp':
         return exportTemperatureCSV(results, nodeNameMap, run, units);
       case 'csv-flow':
-        return exportFlowCSV(results, nodeNameMap, run, units);
+        return exportFlowCSV(results, conductorNameMap, run, units);
       case 'csv':
         return exportTemperatureCSV(results, nodeNameMap, run, units);
       case 'json-full':
@@ -153,7 +163,7 @@ function exportTemperatureCSV(
 
 function exportFlowCSV(
   results: Array<{ nodeId: string; timeValues: unknown; conductorFlows: unknown }>,
-  nodeNameMap: Map<string, string>,
+  conductorNameMap: Map<string, string>,
   run: { id: string },
   units: string,
 ): NextResponse {
@@ -178,7 +188,8 @@ function exportFlowCSV(
 
   const headers = ['Time (s)'];
   for (const flow of flowEntries) {
-    headers.push(`Conductor_${flow.conductorId.slice(0, 8)} (${fu})`);
+    const name = conductorNameMap.get(flow.conductorId) ?? `Conductor_${flow.conductorId.slice(0, 8)}`;
+    headers.push(`${name} (${fu})`);
   }
 
   const rows: string[] = [headers.join(',')];
