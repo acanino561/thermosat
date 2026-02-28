@@ -21,39 +21,78 @@ interface OrbitPathProps {
   orbitFraction: number;
 }
 
-export function OrbitPath({ altitudeKm, inclinationDeg, orbitFraction }: OrbitPathProps) {
-  const markerRef = useRef<THREE.Mesh>(null);
+// ─── Mini CubeSat (standalone, no store dependencies) ────────────────
 
+function MiniCubeSat() {
+  const scale = 0.05;
+  return (
+    <group scale={[scale, scale, scale]}>
+      {/* Main bus body */}
+      <mesh castShadow>
+        <boxGeometry args={[6, 12, 18]} />
+        <meshStandardMaterial
+          color="#c0c0c0"
+          emissive="#00e5ff"
+          emissiveIntensity={0.3}
+          roughness={0.3}
+          metalness={0.8}
+        />
+      </mesh>
+      {/* +Y Solar panel */}
+      <mesh position={[0, 10, 0]} castShadow>
+        <boxGeometry args={[5, 8, 16]} />
+        <meshStandardMaterial
+          color="#1a237e"
+          emissive="#1a237e"
+          emissiveIntensity={0.1}
+          roughness={0.5}
+          metalness={0.4}
+        />
+      </mesh>
+      {/* -Y Solar panel */}
+      <mesh position={[0, -10, 0]} castShadow>
+        <boxGeometry args={[5, 8, 16]} />
+        <meshStandardMaterial
+          color="#1a237e"
+          emissive="#1a237e"
+          emissiveIntensity={0.1}
+          roughness={0.5}
+          metalness={0.4}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+export function OrbitPath({ altitudeKm, inclinationDeg, orbitFraction }: OrbitPathProps) {
   // Orbit radius in scene units (1 unit = 1000 km)
   const orbitRadius = EARTH_RADIUS_UNITS + altitudeKm / 1000;
 
   // Inclination rotation matrix
   const inclinationRad = (inclinationDeg * Math.PI) / 180;
 
-  // Generate orbit curve points (closed loop)
-  const points = useMemo(() => {
-    const pts: [number, number, number][] = [];
-    for (let i = 0; i <= MAX_ORBIT_POINTS; i++) {
+  // Generate orbit curve using CatmullRomCurve3
+  const curve = useMemo(() => {
+    const pts = Array.from({ length: MAX_ORBIT_POINTS }, (_, i) => {
       const angle = (i / MAX_ORBIT_POINTS) * Math.PI * 2;
       const x = Math.cos(angle) * orbitRadius;
       const z = Math.sin(angle) * orbitRadius;
-      // Apply inclination rotation around X axis
       const y = z * Math.sin(inclinationRad);
       const zr = z * Math.cos(inclinationRad);
-      pts.push([x, y, zr]);
-    }
-    return pts;
+      return new THREE.Vector3(x, y, zr);
+    });
+    return new THREE.CatmullRomCurve3(pts, true);
   }, [orbitRadius, inclinationRad]);
 
-  // Spacecraft position on orbit
+  // Get line points from curve
+  const linePoints = useMemo(() => {
+    return curve.getPoints(MAX_ORBIT_POINTS).map((p) => [p.x, p.y, p.z] as [number, number, number]);
+  }, [curve]);
+
+  // Spacecraft position on orbit via curve interpolation
   const spacecraftPos = useMemo(() => {
-    const angle = orbitFraction * Math.PI * 2;
-    const x = Math.cos(angle) * orbitRadius;
-    const z = Math.sin(angle) * orbitRadius;
-    const y = z * Math.sin(inclinationRad);
-    const zr = z * Math.cos(inclinationRad);
-    return new THREE.Vector3(x, y, zr);
-  }, [orbitFraction, orbitRadius, inclinationRad]);
+    return curve.getPointAt(orbitFraction % 1);
+  }, [curve, orbitFraction]);
 
   // Spacecraft facing direction (tangent to orbit)
   const spacecraftRotation = useMemo(() => {
@@ -65,7 +104,7 @@ export function OrbitPath({ altitudeKm, inclinationDeg, orbitFraction }: OrbitPa
     <group>
       {/* Orbit path line */}
       <Line
-        points={points}
+        points={linePoints}
         color="#00e5ff"
         lineWidth={0.8}
         transparent
@@ -75,39 +114,9 @@ export function OrbitPath({ altitudeKm, inclinationDeg, orbitFraction }: OrbitPa
         gapSize={0.25}
       />
 
-      {/* Spacecraft marker — simplified CubeSat box */}
+      {/* Spacecraft marker — MiniCubeSat */}
       <group position={spacecraftPos} rotation={spacecraftRotation}>
-        <mesh ref={markerRef} castShadow>
-          <boxGeometry args={[0.05, 0.1, 0.15]} />
-          <meshStandardMaterial
-            color="#c0c0c0"
-            emissive="#00e5ff"
-            emissiveIntensity={0.3}
-            roughness={0.3}
-            metalness={0.8}
-          />
-        </mesh>
-        {/* Solar panels */}
-        <mesh position={[0, 0.12, 0]} castShadow>
-          <boxGeometry args={[0.04, 0.12, 0.14]} />
-          <meshStandardMaterial
-            color="#1a237e"
-            emissive="#1a237e"
-            emissiveIntensity={0.1}
-            roughness={0.5}
-            metalness={0.4}
-          />
-        </mesh>
-        <mesh position={[0, -0.12, 0]} castShadow>
-          <boxGeometry args={[0.04, 0.12, 0.14]} />
-          <meshStandardMaterial
-            color="#1a237e"
-            emissive="#1a237e"
-            emissiveIntensity={0.1}
-            roughness={0.5}
-            metalness={0.4}
-          />
-        </mesh>
+        <MiniCubeSat />
       </group>
     </group>
   );

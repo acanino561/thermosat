@@ -15,6 +15,8 @@ import {
   isInEclipse,
   eclipsePeriods,
 } from '@/lib/demo/simulation-data';
+import { computeSunDirectionAtTime } from '@/lib/solver/orbital-environment';
+import type { OrbitalConfig } from '@/lib/solver/types';
 import { cn } from '@/lib/utils';
 
 // ─── FPS Monitor & Shadow Downgrade ─────────────────────────────────
@@ -57,22 +59,28 @@ function ShadowInitializer() {
 
 // ─── Eclipse Transition Helper ──────────────────────────────────────
 
-function useEclipseIntensity(currentTime: number): number {
-  const prevIntensity = useRef(1.0);
-  const targetIntensity = isInEclipse(currentTime) ? 0.05 : 1.0;
+function useEclipseIntensity(currentTime: number) {
+  const intensityRef = useRef(1.0);
+  const eclipse = isInEclipse(currentTime);
 
-  // Smooth transition
-  const lerpSpeed = 0.08;
-  prevIntensity.current += (targetIntensity - prevIntensity.current) * lerpSpeed;
+  useFrame((_, delta) => {
+    const target = eclipse ? 0.05 : 1.0;
+    intensityRef.current = THREE.MathUtils.lerp(intensityRef.current, target, delta * 3);
+  });
 
-  return prevIntensity.current;
+  return { intensity: intensityRef, isEclipse: eclipse };
 }
 
 // ─── Sun Direction from orbit time ──────────────────────────────────
 
-function getSunDirection(): THREE.Vector3 {
-  // Fixed sun direction for demo (pointing along +X, slightly elevated)
-  return new THREE.Vector3(1, 0.3, 0).normalize();
+function getSunDirectionAtTimestep(orbitalConfig: OrbitalConfig | null, currentTimeMin: number): THREE.Vector3 {
+  if (!orbitalConfig) {
+    // Fallback for demo mode with no orbital config
+    return new THREE.Vector3(1, 0.3, 0).normalize();
+  }
+  const elapsedSeconds = currentTimeMin * 60;
+  const dir = computeSunDirectionAtTime(orbitalConfig, elapsedSeconds);
+  return new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
 }
 
 // ─── Orbit Scene Contents ───────────────────────────────────────────
@@ -84,16 +92,18 @@ interface OrbitSceneProps {
 
 function OrbitScene({ shadowMapSize, onShadowDowngrade }: OrbitSceneProps) {
   const currentTime = useTimelineStore((s) => s.currentTime);
+  const orbitalConfig = useEditorStore((s) => s.orbitalConfig);
 
-  const sunDirection = useMemo(() => getSunDirection(), []);
-  const sunIntensity = useEclipseIntensity(currentTime);
+  const sunDirection = useMemo(
+    () => getSunDirectionAtTimestep(orbitalConfig, currentTime),
+    [orbitalConfig, currentTime],
+  );
+  const { intensity: sunIntensityRef, isEclipse: eclipse } = useEclipseIntensity(currentTime);
 
   // Orbit fraction (0-1) within current orbit
   const orbitFraction = useMemo(() => {
     return (currentTime % ORBIT_PERIOD_MIN) / ORBIT_PERIOD_MIN;
   }, [currentTime]);
-
-  const eclipse = isInEclipse(currentTime);
 
   return (
     <>
@@ -105,7 +115,7 @@ function OrbitScene({ shadowMapSize, onShadowDowngrade }: OrbitSceneProps) {
       <ambientLight intensity={eclipse ? 0.04 : 0.12} />
       <OrbitSunLight
         sunDirection={sunDirection}
-        intensity={sunIntensity}
+        intensity={sunIntensityRef.current}
         shadowMapSize={shadowMapSize}
       />
 

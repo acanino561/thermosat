@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Play, Pause, SkipBack, SkipForward, FastForward, ChevronLeft, ChevronRight, Eclipse } from 'lucide-react';
+import { Play, Pause, SkipBack, FastForward, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTimelineStore } from '@/lib/stores/timeline-store';
 import {
   ORBIT_PERIOD_MIN,
@@ -131,10 +131,8 @@ export function TimelineScrubber() {
     if (eclipsePeriods.length === 0) return null;
     // Find next eclipse entry after current time
     const nextEntry = eclipsePeriods.find((ep) => ep.start > currentTime);
-    const prevEntry = [...eclipsePeriods].reverse().find((ep) => ep.start <= currentTime);
     // Find next eclipse exit after current time
     const nextExit = eclipsePeriods.find((ep) => ep.end > currentTime);
-    const prevExit = [...eclipsePeriods].reverse().find((ep) => ep.end <= currentTime);
     return {
       nextEntryTime: nextEntry?.start ?? eclipsePeriods[0].start,
       nextExitTime: nextExit?.end ?? eclipsePeriods[0].end,
