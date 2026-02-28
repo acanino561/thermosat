@@ -11,7 +11,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:seed": "npx tsx src/scripts/seed-materials.ts",
-    "test:solver": "npx tsx src/scripts/test-solver.ts"
+    "test:solver": "npx tsx src/scripts/test-solver.ts",
+    "test:solver-v2": "npx tsx src/scripts/test-solver-v2.ts",
+    "test:benchmarks": "npx tsx src/scripts/run-all-benchmarks.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
