@@ -74,7 +74,7 @@ export function Footer() {
           style={{ borderTop: '1px solid var(--tc-border)' }}
         >
           <span className="font-mono text-[10px] tracking-[0.1em]" style={{ color: 'var(--tc-text-muted)' }}>
-            © 2025 THERMOSAT. ALL RIGHTS RESERVED.
+            © 2025 VERIXOS. ALL RIGHTS RESERVED.
           </span>
           <div className="flex items-center gap-6">
             {['GitHub', 'Twitter', 'LinkedIn'].map((name) => (

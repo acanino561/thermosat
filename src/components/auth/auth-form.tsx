@@ -58,7 +58,11 @@ export function AuthForm({ mode }: AuthFormProps) {
             ? 'Invalid email or password.'
             : result.error);
         } else {
-          window.location.href = '/dashboard';
+          // Check if this is a new user (first login) → onboarding
+          const profileRes = await fetch('/api/user/profile');
+          const profileData = await profileRes.json();
+          const projectCount = profileData?.projectCount ?? 1;
+          window.location.href = projectCount === 0 ? '/onboarding' : '/dashboard';
         }
       }
     } catch {
@@ -85,7 +89,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         </h1>
         <p className="text-sm text-muted-foreground text-center mb-6">
           {mode === 'login'
-            ? 'Sign in to continue to ThermoSat'
+            ? 'Sign in to continue to Verixos'
             : 'Start building thermal models for free'}
         </p>
 
