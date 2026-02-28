@@ -3,11 +3,13 @@
 import { useMemo } from 'react';
 import { useUnits } from '@/lib/hooks/use-units';
 import { useEditorStore } from '@/lib/stores/editor-store';
+import { computeDeltaTs, type SensitivityEntry } from '@/lib/what-if/sensitivity-calc';
 
 interface ResultsTableProps {
   nodeResults: Record<string, { times: number[]; temperatures: number[] }>;
   nodeNames: Record<string, string>;
   comparisonNodeResults?: Record<string, { times: number[]; temperatures: number[] }> | null;
+  sensitivityEntries?: SensitivityEntry[];
 }
 
 type Status = 'pass' | 'warning' | 'fail';
@@ -37,10 +39,18 @@ const STATUS_ICON: Record<Status, string> = {
   fail: '❌',
 };
 
-export function ResultsTable({ nodeResults, nodeNames, comparisonNodeResults }: ResultsTableProps) {
+export function ResultsTable({ nodeResults, nodeNames, comparisonNodeResults, sensitivityEntries }: ResultsTableProps) {
   const { label, display } = useUnits();
   const tempLabel = label('Temperature');
   const nodeLimits = useEditorStore((s) => s.nodeLimits);
+  const whatIfEnabled = useEditorStore((s) => s.whatIfEnabled);
+  const whatIfDeltas = useEditorStore((s) => s.whatIfDeltas);
+
+  const whatIfDeltaTs = useMemo(() => {
+    if (!whatIfEnabled || !sensitivityEntries || sensitivityEntries.length === 0) return null;
+    if (!Object.values(whatIfDeltas).some((d) => Math.abs(d) > 1e-12)) return null;
+    return computeDeltaTs(sensitivityEntries, whatIfDeltas);
+  }, [whatIfEnabled, sensitivityEntries, whatIfDeltas]);
 
   const rows = useMemo(() => {
     return Object.entries(nodeResults).map(([nodeId, data]) => {
@@ -99,6 +109,9 @@ export function ResultsTable({ nodeResults, nodeNames, comparisonNodeResults }: 
               {hasComparison && (
                 <th className="text-right py-2 px-3 text-muted-foreground font-medium">ΔT_cmp ({tempLabel})</th>
               )}
+              {whatIfDeltaTs && (
+                <th className="text-right py-2 px-3 text-muted-foreground font-medium text-amber-400/70">ΔT_wi ({tempLabel})</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -121,6 +134,16 @@ export function ResultsTable({ nodeResults, nodeNames, comparisonNodeResults }: 
                     {row.compDelta != null ? `${row.compDelta > 0 ? '+' : ''}${row.compDelta.toFixed(2)}` : '—'}
                   </td>
                 )}
+                {whatIfDeltaTs && (() => {
+                  const dt = whatIfDeltaTs[row.nodeId] ?? 0;
+                  const absD = Math.abs(dt);
+                  const color = absD < 0.1 ? 'text-slate-500' : dt > 0 ? 'text-red-400' : 'text-blue-400';
+                  return (
+                    <td className={`py-2 px-3 text-right font-mono ${color}`}>
+                      {absD < 0.1 ? '—' : `${dt > 0 ? '+' : ''}${dt.toFixed(2)}`}
+                    </td>
+                  );
+                })()}
               </tr>
             ))}
           </tbody>
