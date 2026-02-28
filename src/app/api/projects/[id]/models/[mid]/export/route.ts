@@ -61,11 +61,10 @@ export async function GET(
       .from(simulationConfigs)
       .where(eq(simulationConfigs.modelId, mid));
 
-    // Collect referenced material IDs and fetch them
     const materialIds = nodesData
       .map((n) => n.materialId)
       .filter((id): id is string => id !== null);
-    
+
     let materialsData: Array<Record<string, unknown>> = [];
     if (materialIds.length > 0) {
       materialsData = await db

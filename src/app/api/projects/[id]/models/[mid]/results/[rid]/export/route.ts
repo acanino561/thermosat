@@ -64,6 +64,16 @@ export async function GET(
       nodeNameMap.set(node.id, node.name);
     }
 
+    const conductorRows = await db
+      .select()
+      .from(conductors)
+      .where(eq(conductors.modelId, mid));
+
+    const conductorNameMap = new Map<string, string>();
+    for (const c of conductorRows) {
+      conductorNameMap.set(c.id, c.name);
+    }
+
     const url = new URL(request.url);
     const format = url.searchParams.get('format') ?? 'json-results';
     const units = url.searchParams.get('units') ?? 'si';
@@ -72,9 +82,8 @@ export async function GET(
       case 'csv-temp':
         return exportTemperatureCSV(results, nodeNameMap, run, units);
       case 'csv-flow':
-        return exportFlowCSV(results, nodeNameMap, run, mid, units);
+        return exportFlowCSV(results, conductorNameMap, run, units);
       case 'csv':
-        // Legacy support — same as csv-temp
         return exportTemperatureCSV(results, nodeNameMap, run, units);
       case 'json-full':
         return await exportFullJSON(mid, run, results, nodeNameMap);
@@ -93,11 +102,9 @@ export async function GET(
   }
 }
 
-// ── Temperature helpers ─────────────────────────────────────────────────────
-
 function convertTemp(kelvin: number, units: string): number {
-  if (units === 'imperial') return (kelvin - 273.15) * 9 / 5 + 32; // °F
-  return kelvin; // K (SI default)
+  if (units === 'imperial') return (kelvin - 273.15) * 9 / 5 + 32;
+  return kelvin;
 }
 
 function tempUnit(units: string): string {
@@ -113,8 +120,6 @@ function convertFlow(watts: number, units: string): number {
   return watts;
 }
 
-// ── CSV: Temperature ────────────────────────────────────────────────────────
-
 function exportTemperatureCSV(
   results: Array<{ nodeId: string; timeValues: unknown }>,
   nodeNameMap: Map<string, string>,
@@ -129,7 +134,7 @@ function exportTemperatureCSV(
   const times = firstResult.times;
   const tu = tempUnit(units);
 
-  const headers = [`Time (s)`];
+  const headers = ['Time (s)'];
   const nodeData: number[][] = [];
 
   for (const result of results) {
@@ -156,16 +161,12 @@ function exportTemperatureCSV(
   });
 }
 
-// ── CSV: Heat Flow ──────────────────────────────────────────────────────────
-
 function exportFlowCSV(
   results: Array<{ nodeId: string; timeValues: unknown; conductorFlows: unknown }>,
-  nodeNameMap: Map<string, string>,
+  conductorNameMap: Map<string, string>,
   run: { id: string },
-  modelId: string,
   units: string,
 ): NextResponse {
-  // Collect all conductor flows from results
   const allFlows = new Map<string, ConductorFlowHistory>();
   for (const result of results) {
     const flows = result.conductorFlows as ConductorFlowHistory[] | null;
@@ -187,7 +188,8 @@ function exportFlowCSV(
 
   const headers = ['Time (s)'];
   for (const flow of flowEntries) {
-    headers.push(`Conductor_${flow.conductorId.slice(0, 8)} (${fu})`);
+    const name = conductorNameMap.get(flow.conductorId) ?? `Conductor_${flow.conductorId.slice(0, 8)}`;
+    headers.push(`${name} (${fu})`);
   }
 
   const rows: string[] = [headers.join(',')];
@@ -206,8 +208,6 @@ function exportFlowCSV(
     },
   });
 }
-
-// ── JSON: Results Only ──────────────────────────────────────────────────────
 
 function exportResultsJSON(
   run: {
@@ -245,8 +245,6 @@ function exportResultsJSON(
     },
   });
 }
-
-// ── JSON: Full Model + Results ──────────────────────────────────────────────
 
 async function exportFullJSON(
   modelId: string,
