@@ -113,6 +113,41 @@ export function OrbitPath({ altitudeKm, inclinationDeg, orbitFraction }: OrbitPa
   );
 }
 
+// ─── Sun Sphere (visible sun in scene) ───────────────────────────────
+
+interface SunSphereProps {
+  /** Normalized sun direction vector */
+  sunDirection: THREE.Vector3;
+}
+
+export function SunSphere({ sunDirection }: SunSphereProps) {
+  const position = useMemo(() => {
+    return sunDirection.clone().multiplyScalar(50);
+  }, [sunDirection]);
+
+  return (
+    <group position={position}>
+      {/* Core sun sphere */}
+      <mesh>
+        <sphereGeometry args={[0.8, 32, 32]} />
+        <meshBasicMaterial color="#FDB813" />
+      </mesh>
+
+      {/* Corona glow */}
+      <mesh>
+        <sphereGeometry args={[1.2, 32, 32]} />
+        <meshBasicMaterial
+          color="#FF8C00"
+          transparent
+          opacity={0.3}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 // ─── Sun Light for Orbit Scene ───────────────────────────────────────
 
 interface OrbitSunLightProps {

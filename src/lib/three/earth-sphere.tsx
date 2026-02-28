@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -32,6 +32,14 @@ export function EarthSphere({ sunDirection }: EarthSphereProps) {
   useMemo(() => {
     dayTexture.colorSpace = THREE.SRGBColorSpace;
   }, [dayTexture]);
+
+  // Dispose textures on unmount
+  useEffect(() => {
+    return () => {
+      dayTexture.dispose();
+      specularTexture.dispose();
+    };
+  }, [dayTexture, specularTexture]);
 
   // Slow rotation
   useFrame((state) => {

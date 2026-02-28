@@ -8,7 +8,7 @@ import { Globe, Video, Square, Download } from 'lucide-react';
 import { useTimelineStore } from '@/lib/stores/timeline-store';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { EarthSphere, EARTH_RADIUS_UNITS } from '@/lib/three/earth-sphere';
-import { OrbitPath, OrbitSunLight } from '@/lib/three/orbit-path';
+import { OrbitPath, OrbitSunLight, SunSphere } from '@/lib/three/orbit-path';
 import { configureShadows, checkFps, SHADOW_MAP_SIZE_HIGH, SHADOW_MAP_SIZE_LOW } from '@/lib/three/shadow-config';
 import {
   ORBIT_PERIOD_MIN,
@@ -121,15 +121,8 @@ function OrbitScene({ shadowMapSize, onShadowDowngrade }: OrbitSceneProps) {
         orbitFraction={orbitFraction}
       />
 
-      {/* Sun indicator */}
-      <mesh position={[sunDirection.x * 40, sunDirection.y * 40, sunDirection.z * 40]}>
-        <sphereGeometry args={[1.5, 16, 16]} />
-        <meshBasicMaterial
-          color={eclipse ? '#443300' : '#ffdd00'}
-          transparent
-          opacity={eclipse ? 0.3 : 1}
-        />
-      </mesh>
+      {/* Sun sphere with corona glow */}
+      <SunSphere sunDirection={sunDirection} />
 
       {/* Eclipse status label */}
       <Html position={[0, EARTH_RADIUS_UNITS + 2, 0]} center style={{ pointerEvents: 'none' }}>
