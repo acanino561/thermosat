@@ -9,6 +9,7 @@ export interface SensitivityEntry {
   nodeId: string;
   dT_dp: number;
   secondOrderEstimate: number;
+  baselineValue: number;
   nodeName?: string;
 }
 
@@ -133,33 +134,47 @@ export function getParameterUnit(parameterId: string, parameterType: string): st
 }
 
 /**
- * Infer baseline value range for a parameter (for slider bounds).
- * Returns { min, max, baseline } — defaults to ±50% around 1.0.
+ * Compute parameter range for slider bounds using actual baseline value.
+ * Returns ±50% around the real baseline, with type-specific clamping.
  */
 export function getParameterRange(
-  parameterId: string,
-  parameterType: string,
+  entry: SensitivityEntry,
 ): { min: number; max: number; baseline: number; step: number } {
-  // Absorptivity / emissivity: 0–1 range
+  const { parameterId, parameterType, baselineValue } = entry;
+  let min = baselineValue * 0.5;
+  let max = baselineValue * 1.5;
+
+  // Absorptivity / emissivity: clamp to [0.01, 1.0]
   if (parameterId.includes('absorptivity') || parameterId.includes('emissivity')) {
-    return { min: 0, max: 1, baseline: 0.5, step: 0.01 };
+    min = Math.max(0.01, min);
+    max = Math.min(1.0, max);
+    const range = max - min;
+    return { min, max, baseline: baselineValue, step: range > 0 ? range / 100 : 0.01 };
+  }
+  // Mass: clamp min
+  if (parameterId.includes('mass')) {
+    min = Math.max(0.001, min);
+    const range = max - min;
+    return { min, max, baseline: baselineValue, step: range > 0 ? range / 100 : 0.1 };
+  }
+  // Capacitance: clamp min
+  if (parameterId.includes('capacitance')) {
+    min = Math.max(0.001, min);
+    const range = max - min;
+    return { min, max, baseline: baselineValue, step: range > 0 ? range / 100 : 1 };
   }
   // Conductance: always positive
   if (parameterType === 'conductor') {
-    return { min: 0, max: 100, baseline: 1, step: 0.1 };
+    min = Math.max(0, min);
+    const range = max - min;
+    return { min, max, baseline: baselineValue, step: range > 0 ? range / 100 : 0.1 };
   }
-  // Heat load: can be negative (radiators)
+  // Heat load: can be negative
   if (parameterType === 'heat_load') {
-    return { min: -100, max: 100, baseline: 0, step: 0.5 };
-  }
-  // Mass
-  if (parameterId.includes('mass')) {
-    return { min: 0.01, max: 100, baseline: 1, step: 0.1 };
-  }
-  // Capacitance
-  if (parameterId.includes('capacitance')) {
-    return { min: 0, max: 10000, baseline: 100, step: 1 };
+    const range = max - min;
+    return { min, max, baseline: baselineValue, step: range > 0 ? range / 100 : 0.5 };
   }
   // Fallback
-  return { min: 0, max: 10, baseline: 1, step: 0.01 };
+  const range = max - min;
+  return { min, max, baseline: baselineValue, step: range > 0 ? range / 100 : 0.01 };
 }

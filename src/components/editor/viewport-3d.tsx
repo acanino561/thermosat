@@ -12,7 +12,7 @@ import {
 import * as THREE from 'three';
 import { useEditorStore, ThermalNode, Conductor, HeatLoad, CadFace, CadGeometry, NODE_COLOR_PALETTE, type RenderMode, type CameraPreset } from '@/lib/stores/editor-store';
 import { temperatureToHex, type ColorScale, type ThermalRange } from '@/lib/thermal-colors';
-import { computeWhatIfTemps, type SensitivityEntry } from '@/lib/what-if/sensitivity-calc';
+import { computeWhatIfTemps, computeDeltaTs } from '@/lib/what-if/sensitivity-calc';
 import { ViewportToolbar } from './viewport-toolbar';
 import { SurfaceContextMenu } from './surface-context-menu';
 import { SurfaceProperties } from './surface-properties';
@@ -90,6 +90,7 @@ interface ThermalNodeMeshProps {
   isSelected: boolean;
   hasResults: boolean;
   finalTemp: number | null;
+  divergingColor?: string | null;
   hasHeatLoad: boolean;
   heatLoadType: string | null;
   onSelect: (id: string) => void;
@@ -102,6 +103,7 @@ function ThermalNodeMesh({
   isSelected,
   hasResults,
   finalTemp,
+  divergingColor,
   hasHeatLoad,
   heatLoadType,
   onSelect,
@@ -111,11 +113,12 @@ function ThermalNodeMesh({
   const glowRef = useRef<THREE.Mesh>(null);
 
   const color = useMemo(() => {
+    if (divergingColor) return divergingColor;
     if (hasResults && finalTemp !== null) {
       return getTemperatureColor(finalTemp);
     }
     return NODE_TYPE_COLORS[node.nodeType] || '#666666';
-  }, [hasResults, finalTemp, node.nodeType]);
+  }, [hasResults, finalTemp, node.nodeType, divergingColor]);
 
   const scale = useMemo(() => {
     if (node.nodeType === 'diffusion') {
@@ -609,8 +612,23 @@ function CadGeometryView({ geometry, selectedFaceIds, hoveredFaceId, onSelectFac
         baseline[nodeId] = data.temperatures[data.temperatures.length - 1];
       }
     }
-    return computeWhatIfTemps(baseline, whatIfSensitivityEntries as any, whatIfDeltas);
+    return computeWhatIfTemps(baseline, whatIfSensitivityEntries, whatIfDeltas);
   }, [whatIfEnabled, showResultsOverlay, simulationResults, whatIfSensitivityEntries, whatIfDeltas]);
+
+  // Compute diverging ΔT range for What-If mode
+  const cadDivergingRange = useMemo<ThermalRange | null>(() => {
+    if (!cadWhatIfTemps || !simulationResults) return null;
+    const deltaTs: number[] = [];
+    for (const [nodeId, whatIfT] of Object.entries(cadWhatIfTemps)) {
+      const res = simulationResults.nodeResults[nodeId];
+      if (res && res.temperatures.length > 0) {
+        deltaTs.push(whatIfT - res.temperatures[res.temperatures.length - 1]);
+      }
+    }
+    if (deltaTs.length === 0) return null;
+    const maxAbsDelta = Math.max(1, ...deltaTs.map(Math.abs));
+    return { min: -maxAbsDelta, max: maxAbsDelta, auto: false };
+  }, [cadWhatIfTemps, simulationResults]);
 
   const thermalColorMap = useMemo(() => {
     if (renderMode !== 'thermal') return new Map<string, string>();
@@ -633,11 +651,21 @@ function CadGeometryView({ geometry, selectedFaceIds, hoveredFaceId, onSelectFac
         if (node) temp = node.temperature;
       }
       if (temp !== null) {
-        map.set(face.id, temperatureToHex(temp, thermalRange, colorScale));
+        // Use diverging cool-warm scale for What-If mode (ΔT centred on 0)
+        if (cadWhatIfTemps && cadDivergingRange && cadWhatIfTemps[mapping.nodeId] != null) {
+          const baseRes = simulationResults?.nodeResults[mapping.nodeId];
+          const baselineT = baseRes && baseRes.temperatures.length > 0
+            ? baseRes.temperatures[baseRes.temperatures.length - 1]
+            : temp;
+          const deltaT = temp - baselineT;
+          map.set(face.id, temperatureToHex(deltaT, cadDivergingRange, 'cool-warm'));
+        } else {
+          map.set(face.id, temperatureToHex(temp, thermalRange, colorScale));
+        }
       }
     }
     return map;
-  }, [renderMode, geometry.faces, surfaceNodeMappings, nodes, simulationResults, showResultsOverlay, thermalRange, colorScale, cadWhatIfTemps]);
+  }, [renderMode, geometry.faces, surfaceNodeMappings, nodes, simulationResults, showResultsOverlay, thermalRange, colorScale, cadWhatIfTemps, cadDivergingRange]);
 
   return (
     <group position={[offset.x * scale, offset.y * scale, offset.z * scale]} scale={[scale, scale, scale]}>
@@ -703,8 +731,31 @@ function SceneContents({ onFaceContextMenu, screenshotGlRef }: SceneContentsProp
         baseline[nodeId] = data.temperatures[data.temperatures.length - 1];
       }
     }
-    return computeWhatIfTemps(baseline, whatIfSensitivityEntries as any, whatIfDeltas);
+    return computeWhatIfTemps(baseline, whatIfSensitivityEntries, whatIfDeltas);
   }, [whatIfEnabled, hasResults, simulationResults, whatIfSensitivityEntries, whatIfDeltas]);
+
+  // Compute diverging colors for node spheres in What-If mode
+  const nodeDivergingColors = useMemo<Map<string, string>>(() => {
+    if (!whatIfTemps || !simulationResults) return new Map();
+    const deltaTs: number[] = [];
+    const nodeDeltaMap = new Map<string, number>();
+    for (const [nodeId, whatIfT] of Object.entries(whatIfTemps)) {
+      const res = simulationResults.nodeResults[nodeId];
+      if (res && res.temperatures.length > 0) {
+        const dt = whatIfT - res.temperatures[res.temperatures.length - 1];
+        deltaTs.push(dt);
+        nodeDeltaMap.set(nodeId, dt);
+      }
+    }
+    if (deltaTs.length === 0) return new Map();
+    const maxAbsDelta = Math.max(1, ...deltaTs.map(Math.abs));
+    const divergingRange: ThermalRange = { min: -maxAbsDelta, max: maxAbsDelta, auto: false };
+    const colors = new Map<string, string>();
+    for (const [nodeId, dt] of nodeDeltaMap) {
+      colors.set(nodeId, temperatureToHex(dt, divergingRange, 'cool-warm'));
+    }
+    return colors;
+  }, [whatIfTemps, simulationResults]);
 
   const getFinalTemp = useCallback(
     (nodeId: string): number | null => {
@@ -779,6 +830,7 @@ function SceneContents({ onFaceContextMenu, screenshotGlRef }: SceneContentsProp
             isSelected={selectedNodeId === node.id}
             hasResults={hasResults}
             finalTemp={getFinalTemp(node.id)}
+            divergingColor={nodeDivergingColors.get(node.id) ?? null}
             hasHeatLoad={!!hl}
             heatLoadType={hl?.loadType ?? null}
             onSelect={selectNode}

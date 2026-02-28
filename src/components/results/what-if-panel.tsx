@@ -105,8 +105,8 @@ export function WhatIfPanel({ projectId, modelId, runId }: WhatIfPanelProps) {
   );
 
   const handleReset = useCallback(() => {
-    setWhatIfDeltas({});
-  }, [setWhatIfDeltas]);
+    resetWhatIf();
+  }, [resetWhatIf]);
 
   // Don't render anything if status is failed or not_available
   if (status === 'failed' || status === 'not_available') return null;
@@ -209,8 +209,8 @@ interface ParameterSliderProps {
 
 function ParameterSlider({ entry, delta, onChange }: ParameterSliderProps) {
   const range = useMemo(
-    () => getParameterRange(entry.parameterId, entry.parameterType),
-    [entry.parameterId, entry.parameterType],
+    () => getParameterRange(entry),
+    [entry],
   );
 
   const unit = getParameterUnit(entry.parameterId, entry.parameterType);
@@ -272,7 +272,7 @@ function RerunButton({ projectId, modelId, entries, deltas, disabled }: RerunBut
     for (const entry of entries) {
       const dp = deltas[entry.parameterId];
       if (!dp) continue;
-      const range = getParameterRange(entry.parameterId, entry.parameterType);
+      const range = getParameterRange(entry);
       const newValue = range.baseline + dp;
 
       if (entry.parameterType === 'node_property') {

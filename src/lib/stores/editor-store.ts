@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ColorScale, ThermalRange } from '@/lib/thermal-colors';
+import type { SensitivityEntry } from '@/lib/what-if/sensitivity-calc';
 
 // Types matching the backend schema
 export interface ThermalNode {
@@ -222,15 +223,7 @@ interface EditorState {
   // What If state
   whatIfEnabled: boolean;
   whatIfDeltas: Record<string, number>; // parameterId → Δp
-  whatIfSensitivityEntries: Array<{
-    parameterId: string;
-    parameterType: string;
-    parameterLabel: string;
-    entityId: string;
-    nodeId: string;
-    dT_dp: number;
-    secondOrderEstimate: number;
-  }>;
+  whatIfSensitivityEntries: SensitivityEntry[];
 
   // Results viewer actions
   setCurrentTimestep: (timestep: number) => void;
@@ -239,15 +232,7 @@ interface EditorState {
   setNodeLimits: (limits: Record<string, { minTemp: number; maxTemp: number }>) => void;
   setWhatIfEnabled: (enabled: boolean) => void;
   setWhatIfDeltas: (deltas: Record<string, number>) => void;
-  setWhatIfSensitivityEntries: (entries: Array<{
-    parameterId: string;
-    parameterType: string;
-    parameterLabel: string;
-    entityId: string;
-    nodeId: string;
-    dT_dp: number;
-    secondOrderEstimate: number;
-  }>) => void;
+  setWhatIfSensitivityEntries: (entries: SensitivityEntry[]) => void;
   resetWhatIf: () => void;
 
   // Actions
