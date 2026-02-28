@@ -417,6 +417,40 @@ export interface ConductorFlowHistory {
   flows: number[];
 }
 
+export const sensitivityStatusEnum = pgEnum('sensitivity_status', [
+  'pending',
+  'running',
+  'complete',
+  'failed',
+]);
+
+export interface SensitivityEntry {
+  parameterId: string;
+  parameterType: 'node_property' | 'conductor' | 'heat_load';
+  entityId: string;
+  nodeId: string;
+  dT_dp: number;
+  secondOrderEstimate: number;
+}
+
+export const sensitivityMatrices = pgTable(
+  'sensitivity_matrices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => simulationRuns.id, { onDelete: 'cascade' }),
+    status: sensitivityStatusEnum('status').default('pending').notNull(),
+    computedAt: timestamp('computed_at', { mode: 'date' }),
+    entries: jsonb('entries').$type<SensitivityEntry[]>(),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    runIdIdx: index('sensitivity_matrices_run_id_idx').on(table.runId),
+  }),
+);
+
 export const simulationResults = pgTable(
   'simulation_results',
   {
