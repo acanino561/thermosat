@@ -87,16 +87,11 @@ function collectParameters(
         parameterLabel: `Solar Absorptivity — ${node.name}`,
         entityId: node.id,
         getValue: () => node.absorptivity!,
-        apply: (ns) => {
+        apply: (ns, _cs, _ls, val) => {
           const n = ns.find(x => x.id === node.id);
-          if (n) n.absorptivity = arguments[3] as any; // replaced below
+          if (n) n.absorptivity = val;
         },
       });
-      // Fix the apply function — closures need proper value passing
-      params[params.length - 1].apply = (ns, _cs, _ls, val) => {
-        const n = ns.find(x => x.id === node.id);
-        if (n) n.absorptivity = val;
-      };
     }
 
     if (node.emissivity !== null && node.emissivity !== undefined) {
