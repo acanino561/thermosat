@@ -19,6 +19,7 @@ import { SurfaceProperties } from './surface-properties';
 import { ThermalLegend } from './thermal-legend';
 import { ViewportContextMenu } from './viewport-context-menu';
 import { configureShadows, checkFps, SHADOW_MAP_SIZE_HIGH, SHADOW_MAP_SIZE_LOW } from '@/lib/three/shadow-config';
+import { getPBRProperties } from '@/lib/three/pbr-materials';
 
 // ─── Constants ──────────────────────────────────────────────────────────
 
@@ -460,12 +461,13 @@ interface CadFaceMeshProps {
   nodeColor: string | null;
   renderMode: RenderMode;
   thermalColor: string | null;
+  pbrProps: { color: string; roughness: number; metalness: number } | null;
   onSelect: (id: string, shiftKey: boolean) => void;
   onHover: (id: string | null) => void;
   onContextMenu: (id: string, event: ThreeEvent<MouseEvent>) => void;
 }
 
-function CadFaceMesh({ face, isSelected, isHovered, nodeColor, renderMode, thermalColor, onSelect, onHover, onContextMenu }: CadFaceMeshProps) {
+function CadFaceMesh({ face, isSelected, isHovered, nodeColor, renderMode, thermalColor, pbrProps, onSelect, onHover, onContextMenu }: CadFaceMeshProps) {
   const hasSimResults = useEditorStore((s) => !!s.simulationResults);
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -478,9 +480,10 @@ function CadFaceMesh({ face, isSelected, isHovered, nodeColor, renderMode, therm
   const baseColor = useMemo(() => {
     if (renderMode === 'thermal' && thermalColor) return new THREE.Color(thermalColor);
     if (renderMode === 'material' && nodeColor) return new THREE.Color(nodeColor);
+    if (pbrProps) return new THREE.Color(pbrProps.color);
     if (nodeColor) return new THREE.Color(nodeColor);
     return new THREE.Color(face.color[0], face.color[1], face.color[2]);
-  }, [face.color, nodeColor, renderMode, thermalColor]);
+  }, [face.color, nodeColor, renderMode, thermalColor, pbrProps]);
 
   const emissiveColor = useMemo(() => {
     if (isSelected) return '#00e5ff';
@@ -492,6 +495,8 @@ function CadFaceMesh({ face, isSelected, isHovered, nodeColor, renderMode, therm
 
   const isWireframeMode = renderMode === 'wireframe';
   const emissiveIntensity = isSelected ? 0.4 : isHovered ? 0.25 : renderMode === 'thermal' ? 0.3 : nodeColor ? 0.15 : 0.05;
+  const roughness = pbrProps?.roughness ?? 0.4;
+  const metalness = pbrProps?.metalness ?? 0.6;
 
   return (
     <group>
@@ -522,8 +527,8 @@ function CadFaceMesh({ face, isSelected, isHovered, nodeColor, renderMode, therm
           color={baseColor}
           emissive={emissiveColor}
           emissiveIntensity={emissiveIntensity}
-          roughness={0.4}
-          metalness={0.6}
+          roughness={roughness}
+          metalness={metalness}
           side={THREE.DoubleSide}
           transparent={isWireframeMode}
           opacity={isWireframeMode ? 0.15 : 1}
@@ -671,6 +676,19 @@ function CadGeometryView({ geometry, selectedFaceIds, hoveredFaceId, onSelectFac
     return map;
   }, [renderMode, geometry.faces, surfaceNodeMappings, nodes, simulationResults, showResultsOverlay, thermalRange, colorScale, cadWhatIfTemps, cadDivergingRange]);
 
+  // Build PBR properties map per face based on assigned node's material properties
+  const pbrPropsMap = useMemo(() => {
+    const map = new Map<string, { color: string; roughness: number; metalness: number }>();
+    for (const mapping of surfaceNodeMappings) {
+      const node = nodes.find((n) => n.id === mapping.nodeId);
+      if (!node) continue;
+      // Use node name as proxy for material type detection (materialId name not in store)
+      const props = getPBRProperties(node.name, node.absorptivity, node.emissivity);
+      map.set(mapping.faceId, props);
+    }
+    return map;
+  }, [surfaceNodeMappings, nodes]);
+
   return (
     <group position={[offset.x * scale, offset.y * scale, offset.z * scale]} scale={[scale, scale, scale]}>
       {geometry.faces.map((face) => (
@@ -682,6 +700,7 @@ function CadGeometryView({ geometry, selectedFaceIds, hoveredFaceId, onSelectFac
           nodeColor={nodeColorMap.get(face.id) ?? null}
           renderMode={renderMode}
           thermalColor={thermalColorMap.get(face.id) ?? null}
+          pbrProps={pbrPropsMap.get(face.id) ?? null}
           onSelect={onSelectFace}
           onHover={onHoverFace}
           onContextMenu={onContextMenuFace}
@@ -931,6 +950,12 @@ function SceneContents({ onFaceContextMenu, screenshotGlRef }: SceneContentsProp
 
       {/* Shadow map initialization */}
       <ShadowSetup />
+
+      {/* Post-processing: SSAO + SMAA */}
+      <PostProcessingEffects />
+
+      {/* Heat load glow lights */}
+      <HeatLoadGlowLights />
     </>
   );
 }
@@ -950,7 +975,77 @@ function ShadowSetup() {
   return null;
 }
 
-// ─── Viewport3D (exported) ──────────────────────────────────────────────
+// ─── Post-Processing Effects ────────────────────────────────────────────
+
+let EffectComposer: any = null;
+let SSAO: any = null;
+let SMAA: any = null;
+
+try {
+  const postprocessing = require('@react-three/postprocessing');
+  EffectComposer = postprocessing.EffectComposer;
+  SSAO = postprocessing.SSAO;
+  SMAA = postprocessing.SMAA;
+} catch {
+  // postprocessing not available — graceful fallback
+}
+
+function PostProcessingEffects() {
+  if (!EffectComposer || !SSAO || !SMAA) return null;
+
+  return (
+    <EffectComposer>
+      <SSAO
+        radius={0.1}
+        intensity={1.5}
+        luminanceInfluence={0.5}
+      />
+      <SMAA />
+    </EffectComposer>
+  );
+}
+
+// ─── Heat Load Glow Lights ──────────────────────────────────────────────
+
+function HeatLoadGlowLights() {
+  const nodes = useEditorStore((s) => s.nodes);
+  const heatLoads = useEditorStore((s) => s.heatLoads);
+  const cadGeometry = useEditorStore((s) => s.cadGeometry);
+  const nodePositions = useMemo(() => computeNodePositions(nodes), [nodes]);
+
+  const glowLights = useMemo(() => {
+    // Get heat loads with Q > 0
+    const activeLoads = heatLoads
+      .filter((hl) => hl.value != null && hl.value > 0)
+      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+      .slice(0, 5); // Cap to top 5
+
+    return activeLoads.map((hl) => {
+      const pos = nodePositions.get(hl.nodeId);
+      if (!pos) return null;
+      const intensity = Math.min((hl.value ?? 0) / 100, 2); // 100W → 1.0
+      return { id: hl.id, position: pos, intensity };
+    }).filter(Boolean) as { id: string; position: THREE.Vector3; intensity: number }[];
+  }, [heatLoads, nodePositions]);
+
+  if (cadGeometry) return null; // Skip for CAD mode — positions don't map
+
+  return (
+    <>
+      {glowLights.map((light) => (
+        <pointLight
+          key={`glow-${light.id}`}
+          position={light.position}
+          color="#FF6B35"
+          intensity={light.intensity}
+          distance={2}
+          decay={2}
+        />
+      ))}
+    </>
+  );
+}
+
 // ─── Viewport3D (exported) ──────────────────────────────────────────────
 
 export function Viewport3D() {
