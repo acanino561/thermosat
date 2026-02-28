@@ -32,6 +32,7 @@ import { AddConductorDialog } from './add-conductor-dialog';
 import { AddHeatLoadDialog } from './add-heat-load-dialog';
 import { HistoryPanel } from './history-panel';
 import { VersionHistory } from './version-history';
+import { SimulationConfigDialog } from './simulation-config-dialog';
 import Link from 'next/link';
 
 interface ToolbarProps {
@@ -60,6 +61,7 @@ export function Toolbar({ projectId }: ToolbarProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showSimConfig, setShowSimConfig] = useState(false);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -110,16 +112,7 @@ export function Toolbar({ projectId }: ToolbarProps) {
   };
 
   const handleRunSimulation = () => {
-    runSimulation({
-      simulationType: 'transient',
-      config: {
-        timeStart: 0,
-        timeEnd: 3600,
-        timeStep: 10,
-        maxIterations: 1000,
-        tolerance: 1e-6,
-      },
-    });
+    setShowSimConfig(true);
   };
 
   return (
@@ -299,6 +292,12 @@ export function Toolbar({ projectId }: ToolbarProps) {
       {showVersionHistory && (
         <VersionHistory onClose={() => setShowVersionHistory(false)} />
       )}
+
+      {/* Simulation config dialog */}
+      <SimulationConfigDialog
+        open={showSimConfig}
+        onOpenChange={setShowSimConfig}
+      />
     </>
   );
 }
