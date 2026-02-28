@@ -68,7 +68,7 @@ export function SpecComparison() {
             style={{ backgroundColor: 'var(--tc-elevated)', borderBottom: '1px solid var(--tc-border)' }}
           >
             <span style={{ color: 'var(--tc-text-muted)' }}>PARAMETER</span>
-            <span className="text-accent">THERMOSAT</span>
+            <span className="text-accent">VERIXOS</span>
             <span style={{ color: 'var(--tc-text-muted)' }}>LEGACY TOOLS</span>
           </div>
 
