@@ -10,7 +10,6 @@ import {
   RotateCcw,
   Clock,
   Loader2,
-  Camera,
 } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { cn } from '@/lib/utils';

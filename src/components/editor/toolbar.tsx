@@ -25,8 +25,9 @@ import {
   History,
   Clock,
   Check,
+  AlertCircle,
 } from 'lucide-react';
-import { useEditorStore, type AutoSaveStatus } from '@/lib/stores/editor-store';
+import { useEditorStore } from '@/lib/stores/editor-store';
 import { AddNodeDialog } from './add-node-dialog';
 import { AddConductorDialog } from './add-conductor-dialog';
 import { AddHeatLoadDialog } from './add-heat-load-dialog';
@@ -45,7 +46,6 @@ export function Toolbar({ projectId }: ToolbarProps) {
     modelName,
     isDirty,
     save,
-    createSnapshot,
     undo,
     redo,
     history,
@@ -146,6 +146,11 @@ export function Toolbar({ projectId }: ToolbarProps) {
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-400 border-green-400 gap-1">
               <Check className="h-2.5 w-2.5" />
               Saved {formatSavedTime(lastSavedAt)}
+            </Badge>
+          ) : autoSaveStatus === 'error' ? (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-red-400 border-red-400 gap-1">
+              <AlertCircle className="h-2.5 w-2.5" />
+              Save failed
             </Badge>
           ) : isDirty ? (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-400 border-orange-400">

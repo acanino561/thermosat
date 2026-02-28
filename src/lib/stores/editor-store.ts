@@ -389,7 +389,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       // Set up periodic snapshot timer (every 10 minutes of active editing)
       const snapshotInterval = setInterval(() => {
         const s = get();
-        if (s.isDirty && s.projectId && s.modelId) {
+        const timeSinceLast = Date.now() - s._lastSnapshotAt;
+        if (s.isDirty && s.projectId && s.modelId && timeSinceLast > SNAPSHOT_INTERVAL_MS) {
           s.createSnapshot('Periodic auto-snapshot');
         }
       }, SNAPSHOT_INTERVAL_MS);
