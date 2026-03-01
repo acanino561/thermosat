@@ -6,6 +6,7 @@ import { authenticateApiKey, isErrorResponse } from '@/lib/utils/v1-helpers';
 import { createNodeSchema } from '@/lib/validators/nodes';
 import { parseJsonBody, validationErrorResponse } from '@/lib/utils/api-helpers';
 import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
+import { enforceTierLimit, TierLimitError } from '@/lib/billing/limits';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -56,6 +57,20 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
     }
 
     try { requireRole(role, 'editor'); } catch { return NextResponse.json({ error: 'Forbidden' }, { status: 403 }); }
+
+    // Enforce tier limit on node count
+    const existingNodes = await db.select().from(thermalNodes).where(eq(thermalNodes.modelId, id));
+    try {
+      await enforceTierLimit(auth.userId, 'nodes', existingNodes.length);
+    } catch (err) {
+      if (err instanceof TierLimitError) {
+        return NextResponse.json(
+          { error: { code: 'TIER_LIMIT_EXCEEDED', message: err.message, upgradeUrl: '/dashboard/settings/billing' } },
+          { status: 403 }
+        );
+      }
+      throw err;
+    }
 
     const body = await parseJsonBody(request);
     if (!body) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });

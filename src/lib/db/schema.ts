@@ -1019,5 +1019,6 @@ export const subscriptions = pgTable(
     userIdIdx: index('subscriptions_user_id_idx').on(table.userId),
     orgIdIdx: index('subscriptions_org_id_idx').on(table.orgId),
     stripeCustomerIdIdx: index('subscriptions_stripe_customer_id_idx').on(table.stripeCustomerId),
+    stripeSubscriptionIdUnique: unique('subscriptions_stripe_subscription_id_unique').on(table.stripeSubscriptionId),
   }),
 );

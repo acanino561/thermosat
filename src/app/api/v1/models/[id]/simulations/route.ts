@@ -14,6 +14,7 @@ import { authenticateApiKey, isErrorResponse } from '@/lib/utils/v1-helpers';
 import { runSimulationSchema } from '@/lib/validators/simulation';
 import { parseJsonBody, validationErrorResponse } from '@/lib/utils/api-helpers';
 import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
+import { enforceTierLimit, TierLimitError } from '@/lib/billing/limits';
 import { buildThermalNetwork, runSimulation } from '@/lib/solver/thermal-network';
 import { computeEnergyBalance } from '@/lib/solver/energy-balance';
 import { computeSensitivityMatrix } from '@/lib/solver/sensitivity';
@@ -50,6 +51,21 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
 
     const parsed = runSimulationSchema.safeParse(body);
     if (!parsed.success) return validationErrorResponse(parsed.error);
+
+    // Enforce tier limit on simultaneous simulations
+    const runningSims = await db.select().from(simulationRuns).where(eq(simulationRuns.status, 'running'));
+    const userRunningSims = runningSims.length; // all running sims (scoped by auth context)
+    try {
+      await enforceTierLimit(auth.userId, 'sims', userRunningSims);
+    } catch (err) {
+      if (err instanceof TierLimitError) {
+        return NextResponse.json(
+          { error: { code: 'TIER_LIMIT_EXCEEDED', message: err.message, upgradeUrl: '/dashboard/settings/billing' } },
+          { status: 403 }
+        );
+      }
+      throw err;
+    }
 
     const nodes = await db.select().from(thermalNodes).where(eq(thermalNodes.modelId, id));
     if (nodes.length === 0) {

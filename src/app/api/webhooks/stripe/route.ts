@@ -67,6 +67,14 @@ export async function POST(req: NextRequest) {
         stripeSubscriptionId: subscriptionId,
         status: 'active',
         currentPeriodEnd: periodEnd,
+      }).onConflictDoUpdate({
+        target: subscriptions.stripeSubscriptionId,
+        set: {
+          tier: tier as 'starter' | 'pro' | 'team',
+          status: 'active',
+          currentPeriodEnd: periodEnd,
+          updatedAt: new Date(),
+        },
       });
       break;
     }
