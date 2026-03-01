@@ -8,7 +8,7 @@ const plans = [
     name: 'ACADEMIC',
     price: 'FREE',
     period: '',
-    desc: 'For students, researchers, and university programs.',
+    desc: 'Students who learn Verixos today join Rocket Lab, ISRO, and NASA tomorrow. The academic flywheel — free now, industry-standard later.',
     specs: [
       { key: 'NODES', value: 'Up to 25' },
       { key: 'MODELS', value: '1 active' },

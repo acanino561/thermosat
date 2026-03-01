@@ -11,6 +11,7 @@ import { FeaturesSection } from '@/components/landing/features-section';
 import { CapabilitiesSection } from '@/components/landing/capabilities-section';
 import { CliTerminalSection } from '@/components/landing/cli-terminal-section';
 import { SpecComparison } from '@/components/landing/spec-comparison';
+import { MoatSection } from '@/components/landing/moat-section';
 import { VvBadgeSection } from '@/components/landing/vv-badge-section';
 import { DemoVideoSection } from '@/components/landing/demo-video-section';
 import { PricingSection } from '@/components/landing/pricing-section';
@@ -32,6 +33,7 @@ export default function LandingPage() {
         <CapabilitiesSection />
         <CliTerminalSection />
         <SpecComparison />
+        <MoatSection />
         <VvBadgeSection />
         <DemoVideoSection />
         <PricingSection />

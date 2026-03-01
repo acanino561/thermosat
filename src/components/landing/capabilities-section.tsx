@@ -44,11 +44,12 @@ const capabilities = [
   {
     id: 'api',
     label: 'AUTOMATION',
-    title: 'Full REST API for CI/CD integration',
+    title: 'REST API — the thermal analysis backend for your entire toolchain',
     specs: [
       { key: 'API', value: 'RESTful, OpenAPI 3.0 documented' },
       { key: 'CI/CD', value: 'GitHub Actions, GitLab CI, Jenkins' },
       { key: 'SDK', value: 'Python, TypeScript' },
+      { key: 'INTEGRATIONS', value: 'GMAT, STK, SysML, CAD tools' },
       { key: 'WEBHOOKS', value: 'Simulation events, results' },
     ],
     desc: 'Trigger thermal margin checks in your CI pipeline — fail the build if margins are breached. Automate parametric sweeps. Connect Verixos to your systems engineering workflow via REST API and Python SDK.',

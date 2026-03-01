@@ -16,6 +16,7 @@ const specs: SpecRow[] = [
   { feature: 'SETUP TIME', verixos: '< 2 minutes', legacy: '1–4 weeks' },
   { feature: 'COLLABORATION', verixos: 'Real-time multi-user', legacy: 'Email files' },
   { feature: 'API ACCESS', verixos: 'REST API + SDKs', legacy: 'None or limited' },
+  { feature: 'INTEGRATIONS', verixos: 'GMAT, STK, SysML, CAD', legacy: 'Standalone only' },
   { feature: 'CI/CD', verixos: 'Native integration', legacy: 'Not available' },
   { feature: 'ORBIT ENGINE', verixos: 'Built-in, automatic', legacy: 'Built-in' },
   { feature: 'TRANSIENT', verixos: 'Backward Euler / CN', legacy: 'Available' },
