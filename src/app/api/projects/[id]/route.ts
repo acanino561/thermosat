@@ -101,6 +101,22 @@ export async function PUT(
       .where(eq(projects.id, id))
       .returning();
 
+    try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: user.id,
+        action: 'project.updated',
+        entityType: 'project',
+        entityId: id,
+        projectId: id,
+        orgId: updated.orgId ?? undefined,
+        before: existing,
+        after: updated,
+        ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
+
     return NextResponse.json({ project: updated });
   } catch (error) {
     console.error('PUT /api/projects/[id] error:', error);
@@ -139,6 +155,21 @@ export async function DELETE(
     if (!existing) return notFoundResponse('Project');
 
     await db.delete(projects).where(eq(projects.id, id));
+
+    try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: user.id,
+        action: 'project.deleted',
+        entityType: 'project',
+        entityId: id,
+        projectId: id,
+        orgId: existing.orgId ?? undefined,
+        before: existing,
+        ipAddress: _request.headers.get('x-forwarded-for') ?? _request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: _request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
 
     return NextResponse.json({ success: true });
   } catch (error) {

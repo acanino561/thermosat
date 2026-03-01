@@ -88,6 +88,21 @@ export async function POST(
       })
       .returning();
 
+    try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: user.id,
+        action: 'node.created',
+        entityType: 'node',
+        entityId: node.id,
+        projectId: id,
+        modelId: mid,
+        after: node,
+        ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
+
     return NextResponse.json({ node }, { status: 201 });
   } catch (error) {
     console.error('POST /api/.../nodes error:', error);
