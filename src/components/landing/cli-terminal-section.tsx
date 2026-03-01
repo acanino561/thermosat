@@ -148,9 +148,11 @@ function TerminalLine({ line }: { line: Line }) {
 
 export function CliTerminalSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: '-80px' });
+  // amount: 0.1 = trigger as soon as 10% of the section is visible; no negative margin
+  const isInView = useInView(sectionRef, { once: true, amount: 0.1 });
 
   const [started, setStarted] = useState(false);
+  const startedRef = useRef(false); // mirrors `started` — safe to read in timeouts
   const [typedPrompt, setTypedPrompt] = useState('');
   const [visibleLines, setVisibleLines] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
@@ -184,10 +186,25 @@ export function CliTerminalSection() {
 
   useEffect(() => {
     if (isInView && !started) {
+      startedRef.current = true;
       setStarted(true);
       runAnimation();
     }
   }, [isInView, started, runAnimation]);
+
+  // Fallback: if IntersectionObserver never fires (e.g. SSR mismatch, hidden overflow),
+  // start the animation 800ms after mount regardless.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!startedRef.current) {
+        startedRef.current = true;
+        setStarted(true);
+        runAnimation();
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <section
