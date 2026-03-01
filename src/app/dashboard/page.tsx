@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { StatsCards } from '@/components/dashboard/stats-cards';
@@ -8,7 +8,16 @@ import { ProjectCard } from '@/components/dashboard/project-card';
 import { CreateProjectDialog } from '@/components/dashboard/create-project-dialog';
 import { ActivityFeed } from '@/components/dashboard/activity-feed';
 import { EmptyState } from '@/components/dashboard/empty-state';
-import { Search } from 'lucide-react';
+import { Search, Rocket } from 'lucide-react';
+import Link from 'next/link';
+
+interface DemoInfo {
+  projectId: string;
+  modelId: string | null;
+  runId: string | null;
+  name: string;
+  description: string;
+}
 
 // Demo data for display — in production, fetched from API
 const demoProjects = [
@@ -44,6 +53,16 @@ const demoProjects = [
 
 export default function DashboardPage() {
   const [search, setSearch] = useState('');
+  const [demo, setDemo] = useState<DemoInfo | null>(null);
+
+  useEffect(() => {
+    fetch('/api/demo')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.demo) setDemo(data.demo);
+      })
+      .catch(() => {});
+  }, []);
 
   const filteredProjects = demoProjects.filter(
     (p) =>
@@ -68,6 +87,37 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
+          {/* Demo CTA — only shown when seed has been run */}
+          {demo && demo.modelId && (
+            <Link href={`/dashboard/projects/${demo.projectId}/models/${demo.modelId}`}>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.4 }}
+                className="glass rounded-xl p-5 cursor-pointer group transition-all duration-300 hover:scale-[1.01] border border-accent-blue/20 hover:border-accent-blue/40 hover:shadow-lg hover:shadow-accent-blue/10 bg-gradient-to-r from-accent-blue/5 to-transparent"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-accent-blue/15 group-hover:bg-accent-blue/25 transition-colors">
+                    <Rocket className="h-6 w-6 text-accent-blue" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-heading text-lg font-semibold group-hover:text-accent-blue transition-colors">
+                        Try the Demo — {demo.name}
+                      </h3>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue">
+                        Live
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {demo.description || '12-node thermal model with pre-loaded simulation results, What If sliders, and orbit playback. No setup required.'}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </Link>
+          )}
+
           {/* Search + Create */}
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
