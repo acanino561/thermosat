@@ -160,7 +160,7 @@ export function HeroSection() {
       {/* Main content */}
       <motion.div
         style={{ y: contentY, opacity: fadeOut }}
-        className="relative z-20 flex-1 flex flex-col justify-center px-6 lg:px-10 max-w-[1400px] mx-auto w-full pt-20"
+        className="relative z-20 flex-1 flex flex-col justify-center px-6 lg:pl-20 xl:pl-28 lg:pr-10 max-w-[1400px] mx-auto w-full pt-20"
       >
         {/* System status tag */}
         <motion.div
@@ -174,7 +174,7 @@ export function HeroSection() {
           TFAWS-GRADE V&V — 10/10 BENCHMARKS PASSING
         </motion.div>
 
-        <div className="max-w-3xl">
+        <div className="max-w-3xl lg:max-w-[38%]">
           <h1 className="font-mono font-bold tracking-tighter leading-[0.9]">
             <motion.span
               initial={{ opacity: 0, y: 40 }}
