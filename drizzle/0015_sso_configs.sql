@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS "sso_configs" (
   "sso_url" text NOT NULL,
   "certificate" text NOT NULL,
   "metadata_url" text,
+  "allowed_domains" text[] NOT NULL DEFAULT '{}',
   "domain_enforced" boolean NOT NULL DEFAULT false,
   "enabled" boolean NOT NULL DEFAULT false,
   "created_at" timestamp DEFAULT now() NOT NULL,

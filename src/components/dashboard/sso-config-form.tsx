@@ -13,6 +13,7 @@ interface SsoConfigData {
   ssoUrl: string;
   certificate: string;
   metadataUrl: string | null;
+  allowedDomains: string[];
   domainEnforced: boolean;
   enabled: boolean;
 }
@@ -23,16 +24,19 @@ export function SsoConfigForm({ orgId }: { orgId: string }) {
     ssoUrl: '',
     certificate: '',
     metadataUrl: null,
+    allowedDomains: [],
     domainEnforced: false,
     enabled: false,
   });
+  const [orgSlug, setOrgSlug] = useState<string>('');
+  const [allowedDomainsInput, setAllowedDomainsInput] = useState('');
   const [metadataXml, setMetadataXml] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const spEntityId = `${baseUrl}/api/saml/${orgId}/metadata`;
-  const spAcsUrl = `${baseUrl}/api/saml/${orgId}/acs`;
+  const spEntityId = `${baseUrl}/api/saml/${orgSlug || orgId}/metadata`;
+  const spAcsUrl = `${baseUrl}/api/saml/${orgSlug || orgId}/acs`;
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -44,9 +48,14 @@ export function SsoConfigForm({ orgId }: { orgId: string }) {
           ssoUrl: json.data.ssoUrl ?? '',
           certificate: json.data.certificate ?? '',
           metadataUrl: json.data.metadataUrl ?? null,
+          allowedDomains: json.data.allowedDomains ?? [],
           domainEnforced: json.data.domainEnforced ?? false,
           enabled: json.data.enabled ?? false,
         });
+        setAllowedDomainsInput((json.data.allowedDomains ?? []).join(', '));
+        if (json.data.orgSlug) {
+          setOrgSlug(json.data.orgSlug);
+        }
       }
     } catch {
       // No config yet
@@ -85,10 +94,16 @@ export function SsoConfigForm({ orgId }: { orgId: string }) {
     setSaving(true);
     setMessage('');
     try {
+      // Parse comma-separated domains into array
+      const domains = allowedDomainsInput
+        .split(',')
+        .map((d) => d.trim().toLowerCase())
+        .filter(Boolean);
+
       const res = await fetch(`/api/organizations/${orgId}/sso`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+        body: JSON.stringify({ ...config, allowedDomains: domains }),
       });
       if (res.ok) {
         setMessage('Configuration saved');
@@ -177,6 +192,19 @@ export function SsoConfigForm({ orgId }: { orgId: string }) {
               onChange={(e) => setConfig({ ...config, certificate: e.target.value })}
               rows={4}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="allowedDomains">Allowed Email Domains</Label>
+            <Input
+              id="allowedDomains"
+              value={allowedDomainsInput}
+              onChange={(e) => setAllowedDomainsInput(e.target.value)}
+              placeholder="example.com, corp.example.com"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Comma-separated list of email domains that must use SSO
+            </p>
           </div>
 
           <div className="flex items-center gap-2">

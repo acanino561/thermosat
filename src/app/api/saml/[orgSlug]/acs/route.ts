@@ -3,7 +3,7 @@ import { db } from '@/lib/db/client';
 import { organizations, ssoConfigs, users, orgMembers } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { parseSamlResponse } from '@/lib/auth/saml';
-import { SignJWT } from 'jose';
+import { encode } from 'next-auth/jwt';
 
 interface RouteParams {
   params: Promise<{ orgSlug: string }>;
@@ -80,22 +80,33 @@ export async function POST(
       });
     }
 
-    // Create a short-lived JWT cookie for session bootstrap
-    const secret = new TextEncoder().encode(
-      process.env.NEXTAUTH_SECRET ?? 'fallback-secret',
-    );
-    const token = await new SignJWT({ sub: user.id, email: user.email })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('1h')
-      .sign(secret);
+    // Create a NextAuth-compatible JWT session token
+    const rawSecret = process.env.NEXTAUTH_SECRET;
+    if (!rawSecret) throw new Error('NEXTAUTH_SECRET is not configured');
+
+    const sessionToken = await encode({
+      token: {
+        sub: user.id,
+        name: user.name,
+        email: user.email,
+        picture: user.image,
+      },
+      secret: rawSecret,
+      maxAge: 7 * 24 * 60 * 60, // 7 days — matches session config in options.ts
+    });
 
     const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+    const isSecure = baseUrl.startsWith('https://');
+    const cookieName = isSecure
+      ? '__Secure-next-auth.session-token'
+      : 'next-auth.session-token';
+
     const response = NextResponse.redirect(`${baseUrl}/dashboard`);
-    response.cookies.set('sso-session', token, {
+    response.cookies.set(cookieName, sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
-      maxAge: 3600,
+      maxAge: 7 * 24 * 60 * 60,
       path: '/',
     });
 

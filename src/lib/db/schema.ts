@@ -225,6 +225,7 @@ export const ssoConfigs = pgTable(
     ssoUrl: text('sso_url').notNull(),
     certificate: text('certificate').notNull(),
     metadataUrl: text('metadata_url'),
+    allowedDomains: text('allowed_domains').array().notNull().default([]),
     domainEnforced: boolean('domain_enforced').notNull().default(false),
     enabled: boolean('enabled').notNull().default(false),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),

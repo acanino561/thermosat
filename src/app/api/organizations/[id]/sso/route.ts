@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { orgMembers, ssoConfigs } from '@/lib/db/schema';
+import { organizations, orgMembers, ssoConfigs } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import {
@@ -20,6 +20,7 @@ const ssoConfigSchema = z.object({
   ssoUrl: z.string().url(),
   certificate: z.string().min(1),
   metadataUrl: z.string().url().optional().nullable(),
+  allowedDomains: z.array(z.string()).optional(),
   domainEnforced: z.boolean().optional(),
   enabled: z.boolean().optional(),
 });
@@ -46,12 +47,27 @@ export async function GET(
     const { id } = await params;
     if (!(await requireOrgAdmin(user.id, id))) return forbiddenResponse();
 
-    const [config] = await db
-      .select()
+    // Join with organizations to include orgSlug
+    const [result] = await db
+      .select({
+        id: ssoConfigs.id,
+        orgId: ssoConfigs.orgId,
+        entityId: ssoConfigs.entityId,
+        ssoUrl: ssoConfigs.ssoUrl,
+        certificate: ssoConfigs.certificate,
+        metadataUrl: ssoConfigs.metadataUrl,
+        allowedDomains: ssoConfigs.allowedDomains,
+        domainEnforced: ssoConfigs.domainEnforced,
+        enabled: ssoConfigs.enabled,
+        createdAt: ssoConfigs.createdAt,
+        updatedAt: ssoConfigs.updatedAt,
+        orgSlug: organizations.slug,
+      })
       .from(ssoConfigs)
+      .innerJoin(organizations, eq(ssoConfigs.orgId, organizations.id))
       .where(eq(ssoConfigs.orgId, id));
 
-    return NextResponse.json({ data: config ?? null });
+    return NextResponse.json({ data: result ?? null });
   } catch (error) {
     console.error('GET /api/organizations/[id]/sso error:', error);
     return serverErrorResponse();
@@ -85,6 +101,7 @@ export async function PUT(
       ssoUrl: parsed.data.ssoUrl,
       certificate: parsed.data.certificate,
       metadataUrl: parsed.data.metadataUrl ?? null,
+      allowedDomains: parsed.data.allowedDomains ?? [],
       domainEnforced: parsed.data.domainEnforced ?? false,
       enabled: parsed.data.enabled ?? false,
       updatedAt: new Date(),
