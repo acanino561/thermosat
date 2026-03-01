@@ -5,32 +5,26 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 
 const features = [
   {
-    icon: '🛰️',
     title: 'Physics-Accurate Solver',
     desc: 'RK4 + Implicit Euler transient solver with adaptive timestepping. 10 out of 10 V&V benchmarks passing against analytical solutions.',
   },
   {
-    icon: '🔥',
     title: 'What If Instant Replay',
     desc: 'Drag a slider, see temperatures update in real time. Sensitivity analysis computed in seconds with finite-difference perturbation.',
   },
   {
-    icon: '🌍',
     title: 'Orbit Playback',
     desc: 'Watch your spacecraft orbit in 3D with real-time shadow mapping, eclipse detection, and terminator line rendering.',
   },
   {
-    icon: '⚡',
     title: '175× Performance Speedup',
     desc: '1,000-node transient simulations complete in under 1 second. Adjacency-list solver with batched DB writes.',
   },
   {
-    icon: '📄',
     title: 'PDF Reports',
     desc: 'Export publication-quality thermal analysis reports with 9 sections including orbit plots, temperature traces, and sensitivity matrices.',
   },
   {
-    icon: '🔐',
     title: 'Secure & Cloud-Native',
     desc: 'Your models live in the cloud. Access from anywhere. Built on Next.js + Neon Postgres with enterprise-grade security.',
   },
@@ -89,7 +83,9 @@ export function FeaturesSection() {
               style={{ backgroundColor: 'var(--tc-surface)' }}
             >
               <div className="flex items-baseline justify-between mb-5">
-                <span className="text-2xl">{feat.icon}</span>
+                <span className="font-mono text-sm font-bold" style={{ color: 'var(--tc-accent)' }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
                 <span className="font-mono text-[10px] tabular-nums" style={{ color: 'var(--tc-text-dim)' }}>
                   {String(i + 1).padStart(2, '0')}/{String(features.length).padStart(2, '0')}
                 </span>

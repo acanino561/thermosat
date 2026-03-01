@@ -281,6 +281,8 @@ export interface OrbitalHeatLoadParams {
   absorptivity: number;
   emissivity: number;
   area: number;
+  /** Body-frame unit vector pointing outward from this surface. */
+  surfaceNormal?: { x: number; y: number; z: number };
 }
 
 export const heatLoads = pgTable(

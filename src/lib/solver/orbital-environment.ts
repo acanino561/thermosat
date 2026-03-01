@@ -192,6 +192,75 @@ function calculateHeoEclipseFraction(
 }
 
 /**
+ * Compute spacecraft position and velocity direction in ECI for a circular orbit.
+ * Returns position vector (metres) and velocity unit vector.
+ */
+export function computeSpacecraftPositionECI(
+  config: OrbitalConfig,
+  t: number,
+): { position: { x: number; y: number; z: number }; velocity: { x: number; y: number; z: number } } {
+  const a = (EARTH_RADIUS_KM + config.altitude) * 1000; // metres
+  const T = 2 * Math.PI * Math.sqrt(Math.pow(a, 3) / EARTH_MU);
+  const omega = (2 * Math.PI) / T;
+  const theta = omega * t;
+
+  const i = config.inclination * DEG_TO_RAD;
+  const RAAN = config.raan * DEG_TO_RAD;
+
+  const cosR = Math.cos(RAAN);
+  const sinR = Math.sin(RAAN);
+  const cosI = Math.cos(i);
+  const sinI = Math.sin(i);
+  const cosT = Math.cos(theta);
+  const sinT = Math.sin(theta);
+
+  const position = {
+    x: a * (cosR * cosT - sinR * cosI * sinT),
+    y: a * (sinR * cosT + cosR * cosI * sinT),
+    z: a * (sinI * sinT),
+  };
+
+  const vx = -cosR * sinT - sinR * cosI * cosT;
+  const vy = -sinR * sinT + cosR * cosI * cosT;
+  const vz = sinI * cosT;
+  const vLen = Math.sqrt(vx * vx + vy * vy + vz * vz);
+
+  const velocity = { x: vx / vLen, y: vy / vLen, z: vz / vLen };
+
+  return { position, velocity };
+}
+
+/**
+ * Convert a sun direction from ECI to LVLH frame.
+ * LVLH: +x = along-track (velocity), +y = orbit normal, +z = nadir.
+ */
+export function computeSunDirectionLVLH(
+  sunECI: { x: number; y: number; z: number },
+  posECI: { x: number; y: number; z: number },
+  velECI: { x: number; y: number; z: number },
+): { x: number; y: number; z: number } {
+  // x̂_LVLH = velocity direction (already unit vector)
+  const xHat = velECI;
+
+  // ẑ_LVLH = -r̂ (nadir)
+  const rLen = Math.sqrt(posECI.x * posECI.x + posECI.y * posECI.y + posECI.z * posECI.z);
+  const zHat = { x: -posECI.x / rLen, y: -posECI.y / rLen, z: -posECI.z / rLen };
+
+  // ŷ_LVLH = x̂ × ẑ  (orbit normal — angular momentum direction)
+  const yHat = {
+    x: xHat.y * zHat.z - xHat.z * zHat.y,
+    y: xHat.z * zHat.x - xHat.x * zHat.z,
+    z: xHat.x * zHat.y - xHat.y * zHat.x,
+  };
+
+  return {
+    x: sunECI.x * xHat.x + sunECI.y * xHat.y + sunECI.z * xHat.z,
+    y: sunECI.x * yHat.x + sunECI.y * yHat.y + sunECI.z * yHat.z,
+    z: sunECI.x * zHat.x + sunECI.y * zHat.y + sunECI.z * zHat.z,
+  };
+}
+
+/**
  * Calculate complete orbital environment from configuration.
  */
 export function calculateOrbitalEnvironment(
@@ -335,10 +404,13 @@ export function generateOrbitalHeatProfile(
   const albedoFluxProfile: number[] = [];
   const earthIRProfile: number[] = [];
   const inSunlightProfile: boolean[] = [];
+  const sunDirectionLVLH: Array<{ x: number; y: number; z: number }> = [];
 
   const dt = env.orbitalPeriod / numSteps;
   const eclipseStart = (0.5 - env.eclipseFraction / 2) * env.orbitalPeriod;
   const eclipseEnd = (0.5 + env.eclipseFraction / 2) * env.orbitalPeriod;
+
+  const hasOrbitalElements = config.inclination != null && config.raan != null;
 
   for (let i = 0; i < numSteps; i++) {
     const t = i * dt;
@@ -365,6 +437,16 @@ export function generateOrbitalHeatProfile(
 
     // Earth IR is roughly constant around the orbit
     earthIRProfile.push(env.earthIR);
+
+    // Compute sun direction in LVLH frame
+    if (hasOrbitalElements) {
+      const sunECI = computeSunDirectionAtTime(config, t);
+      const posVel = computeSpacecraftPositionECI(config, t);
+      const sunLVLH = computeSunDirectionLVLH(sunECI, posVel.position, posVel.velocity);
+      sunDirectionLVLH.push(sunLVLH);
+    } else {
+      sunDirectionLVLH.push({ x: 0, y: 0, z: 0 });
+    }
   }
 
   return {
@@ -373,5 +455,6 @@ export function generateOrbitalHeatProfile(
     albedoFlux: albedoFluxProfile,
     earthIR: earthIRProfile,
     inSunlight: inSunlightProfile,
+    sunDirectionLVLH,
   };
 }

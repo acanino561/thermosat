@@ -5,6 +5,7 @@ import {
   type SolverNode,
   type ThermalNetwork,
   type TimeValuePair,
+  type OrbitalHeatProfile,
 } from './types';
 import { computeHeatPipeFlow, interpolateGeff } from './heat-pipe';
 
@@ -145,6 +146,23 @@ export function computeNodeHeatLoad(
 }
 
 /**
+ * Compute the cosine factor between the sun direction (LVLH) and a body-frame surface normal.
+ * For nadir_pointing attitude: body +Z = zenith = LVLH -z, so flip z.
+ * Returns 0 if the surface faces away from the sun.
+ */
+function getSolarCosFactor(
+  sunLVLH: { x: number; y: number; z: number },
+  surfaceNormalBody: { x: number; y: number; z: number },
+): number {
+  // body → LVLH rotation (nadir_pointing: flip z-axis)
+  const nx = surfaceNormalBody.x;
+  const ny = surfaceNormalBody.y;
+  const nz = -surfaceNormalBody.z; // body +Z = zenith = LVLH -z
+  const cos = sunLVLH.x * nx + sunLVLH.y * ny + sunLVLH.z * nz;
+  return Math.max(0, cos);
+}
+
+/**
  * Compute orbital-dependent heat load at time t.
  * Uses the orbital profile from the network to determine solar/albedo/IR flux.
  */
@@ -210,12 +228,19 @@ function computeOrbitalHeatLoad(
 
   let Q = 0;
 
+  // Compute cos factor for surfaces with a defined normal (attitude-aware)
+  const attitude = network.orbitalConfig?.attitude;
+  const cosFactor =
+    params.surfaceNormal && profile.sunDirectionLVLH?.length && attitude !== 'sun_pointing'
+      ? getSolarCosFactor(profile.sunDirectionLVLH[idx], params.surfaceNormal)
+      : 1.0; // legacy: assume full solar flux
+
   switch (params.surfaceType) {
     case 'solar':
       // Receives solar and albedo when sunlit, Earth IR always
       if (inSunlight) {
-        Q += params.absorptivity * solarFlux * params.area;
-        Q += params.absorptivity * albedoFlux * params.area;
+        Q += params.absorptivity * solarFlux * params.area * cosFactor;
+        Q += params.absorptivity * albedoFlux * params.area * cosFactor;
       }
       Q += params.emissivity * earthIRFlux * params.area;
       // Radiation to space
@@ -224,7 +249,7 @@ function computeOrbitalHeatLoad(
     case 'earth_facing':
       // Receives albedo when sunlit and Earth IR always
       if (inSunlight) {
-        Q += params.absorptivity * albedoFlux * params.area;
+        Q += params.absorptivity * albedoFlux * params.area * cosFactor;
       }
       Q += params.emissivity * earthIRFlux * params.area;
       break;
@@ -232,15 +257,15 @@ function computeOrbitalHeatLoad(
     case 'anti_earth':
       // Receives solar when sunlit, no Earth flux
       if (inSunlight) {
-        Q += params.absorptivity * solarFlux * params.area;
+        Q += params.absorptivity * solarFlux * params.area * cosFactor;
       }
       break;
 
     case 'custom':
       // Apply all fluxes
       if (inSunlight) {
-        Q += params.absorptivity * solarFlux * params.area;
-        Q += params.absorptivity * albedoFlux * params.area;
+        Q += params.absorptivity * solarFlux * params.area * cosFactor;
+        Q += params.absorptivity * albedoFlux * params.area * cosFactor;
       }
       Q += params.emissivity * earthIRFlux * params.area;
       break;

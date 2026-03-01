@@ -1,71 +1,85 @@
 'use client';
 
-import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 
-const benchmarks = [
-  'Two-node conduction',
-  'Radiation equilibrium',
-  'ISS orbital environment',
-  'Multi-node networks',
-  'Transient response',
-  'Heat pipe conductors',
-  'Monte Carlo view factors',
+const benchmarkTags = [
+  'B1 Two-node conduction',
+  'B2 Radiation equilibrium',
+  'B3 ISS orbital env',
+  'B4 Multi-node networks',
+  'B5 Transient response',
+  'B6 Heat pipe conductors',
+  'B7 Monte Carlo VF',
+  'B8 Composite walls',
+  'B9 Phase change',
+  'B10 Full orbit transient',
 ];
 
 export function VvBadgeSection() {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const stripRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: stripRef,
+    offset: ['start end', 'end start'],
+  });
+  const x = useTransform(scrollYProgress, [0, 1], [40, -40]);
 
   return (
-    <section
-      ref={ref}
-      className="relative py-24 lg:py-32 px-6 lg:px-10 overflow-hidden"
-      style={{ borderTop: '1px solid var(--tc-border)' }}
+    <div
+      ref={stripRef}
+      className="relative overflow-hidden py-5"
+      style={{
+        borderTop: '1px solid var(--tc-border)',
+        borderBottom: '1px solid var(--tc-border)',
+        backgroundColor: 'var(--tc-surface)',
+      }}
     >
-      <div className="absolute inset-0 eng-grid pointer-events-none opacity-20" aria-hidden />
-
-      <div className="relative z-10 max-w-[1400px] mx-auto text-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={isInView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.6 }}
+      <motion.div
+        style={{ x }}
+        className="flex items-center gap-6 lg:gap-8 px-6 lg:px-10 min-w-max"
+      >
+        {/* V&V label */}
+        <span
+          className="font-mono text-[10px] tracking-[0.15em] font-bold shrink-0"
+          style={{ color: 'var(--tc-accent)' }}
         >
-          <span className="data-label">VERIFICATION & VALIDATION</span>
+          V&V
+        </span>
 
-          <div className="mt-8 font-mono font-bold text-accent" style={{ fontSize: 'clamp(5rem, 12vw, 10rem)', lineHeight: '0.9' }}>
-            10/10
-          </div>
+        <span className="font-mono text-[10px]" style={{ color: 'var(--tc-text-muted)' }}>·</span>
 
-          <h2 className="mt-4 font-mono font-bold text-display tracking-tight" style={{ color: 'var(--tc-text)' }}>
-            V&V Benchmarks Passing
-          </h2>
+        <span className="font-mono text-xs font-semibold shrink-0" style={{ color: 'var(--tc-text)' }}>
+          10/10 BENCHMARKS PASSING
+        </span>
 
-          <p
-            className="mt-4 max-w-2xl mx-auto text-base leading-relaxed font-sans"
-            style={{ color: 'var(--tc-text-secondary)' }}
+        <span className="font-mono text-[10px]" style={{ color: 'var(--tc-text-muted)' }}>·</span>
+
+        <span className="font-mono text-[10px] tracking-[0.1em] shrink-0" style={{ color: 'var(--tc-text-muted)' }}>
+          B1–B10 ALL PASS
+        </span>
+
+        <span className="font-mono text-[10px]" style={{ color: 'var(--tc-text-muted)' }}>·</span>
+
+        <span className="font-mono text-[10px] tracking-[0.1em] shrink-0" style={{ color: 'var(--tc-text-secondary)' }}>
+          Validated: Incropera / NASA SP-8055 / ECSS-E-ST-31
+        </span>
+
+        <span className="font-mono text-[10px]" style={{ color: 'var(--tc-text-muted)' }}>·</span>
+
+        {/* Benchmark tags */}
+        {benchmarkTags.map((tag) => (
+          <span
+            key={tag}
+            className="font-mono text-[9px] tracking-[0.1em] px-2 py-0.5 shrink-0"
+            style={{
+              color: 'var(--tc-text-muted)',
+              border: '1px solid var(--tc-border)',
+            }}
           >
-            Validated against analytical solutions from Incropera, NASA SP-8055, and ECSS standards.
-          </p>
-        </motion.div>
-
-        {/* Benchmark list */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="mt-12 flex flex-wrap justify-center gap-x-6 gap-y-3"
-        >
-          {benchmarks.map((b, i) => (
-            <span key={b} className="font-mono text-xs tracking-[0.1em] flex items-center gap-2" style={{ color: 'var(--tc-text-muted)' }}>
-              {i > 0 && <span className="text-accent opacity-40">·</span>}
-              {b}
-            </span>
-          ))}
-        </motion.div>
-
-        <div className="rule-accent mx-auto max-w-xl mt-12" />
-      </div>
-    </section>
+            {tag}
+          </span>
+        ))}
+      </motion.div>
+    </div>
   );
 }
