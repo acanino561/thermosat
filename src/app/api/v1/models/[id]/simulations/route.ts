@@ -8,8 +8,9 @@ import {
   simulationRuns,
   simulationResults,
   sensitivityMatrices,
+  projects,
 } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { authenticateApiKey, isErrorResponse } from '@/lib/utils/v1-helpers';
 import { runSimulationSchema } from '@/lib/validators/simulation';
 import { parseJsonBody, validationErrorResponse } from '@/lib/utils/api-helpers';
@@ -52,9 +53,14 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
     const parsed = runSimulationSchema.safeParse(body);
     if (!parsed.success) return validationErrorResponse(parsed.error);
 
-    // Enforce tier limit on simultaneous simulations
-    const runningSims = await db.select().from(simulationRuns).where(eq(simulationRuns.status, 'running'));
-    const userRunningSims = runningSims.length; // all running sims (scoped by auth context)
+    // Enforce tier limit on simultaneous simulations (scoped to current user)
+    const runningSims = await db
+      .select({ id: simulationRuns.id })
+      .from(simulationRuns)
+      .innerJoin(thermalModels, eq(simulationRuns.modelId, thermalModels.id))
+      .innerJoin(projects, eq(thermalModels.projectId, projects.id))
+      .where(and(eq(simulationRuns.status, 'running'), eq(projects.userId, auth.userId)));
+    const userRunningSims = runningSims.length;
     try {
       await enforceTierLimit(auth.userId, 'sims', userRunningSims);
     } catch (err) {
