@@ -151,6 +151,7 @@ export const projects = pgTable(
     description: text('description').default(''),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+    isDemo: boolean('is_demo').default(false).notNull(),
   },
   (table) => ({
     userIdIdx: index('projects_user_id_idx').on(table.userId),
