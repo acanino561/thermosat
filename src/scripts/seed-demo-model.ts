@@ -54,7 +54,7 @@ interface NodeDef {
 }
 
 const NODE_DEFS: NodeDef[] = [
-  { name: '+X Panel (solar)',  mass: 0.08, cp: 900,  alpha: 0.92, eps: 0.85, q: 0, area: 0.03 },
+  { name: '+X Panel (solar)',  mass: 0.08, cp: 900,  alpha: 0.63, eps: 0.85, q: 0, area: 0.03 }, // α_eff = 0.92×(1-0.32_PV_eff)
   { name: '-X Panel',          mass: 0.08, cp: 900,  alpha: 0.15, eps: 0.85, q: 0, area: 0.03 },
   { name: '+Y Panel (solar)',  mass: 0.08, cp: 900,  alpha: 0.92, eps: 0.85, q: 0, area: 0.03 },
   { name: '-Y Panel',          mass: 0.08, cp: 900,  alpha: 0.15, eps: 0.85, q: 0, area: 0.03 },
@@ -91,15 +91,23 @@ interface ConductorDef {
 }
 
 const CONDUCTOR_DEFS: ConductorDef[] = [
-  // 8 conductive (linear)
-  { from: 0, to: 6, type: 'linear', conductance: 0.5 },
-  { from: 1, to: 6, type: 'linear', conductance: 0.3 },
-  { from: 2, to: 7, type: 'linear', conductance: 0.4 },
-  { from: 3, to: 7, type: 'linear', conductance: 0.3 },
-  { from: 4, to: 8, type: 'linear', conductance: 0.6 },
-  { from: 5, to: 9, type: 'linear', conductance: 0.5 },
-  { from: 6, to: 7, type: 'linear', conductance: 1.2 },
-  { from: 8, to: 9, type: 'linear', conductance: 0.8 },
+  // 8 conductive (linear) — panel-to-electronics via standoffs/PCB mounts
+  { from: 0, to: 6, type: 'linear', conductance: 0.5 },  // +X → OBC
+  { from: 1, to: 6, type: 'linear', conductance: 0.3 },  // -X → OBC
+  { from: 2, to: 7, type: 'linear', conductance: 0.4 },  // +Y → Battery
+  { from: 3, to: 7, type: 'linear', conductance: 0.3 },  // -Y → Battery
+  { from: 4, to: 8, type: 'linear', conductance: 0.6 },  // +Z → RF
+  { from: 5, to: 9, type: 'linear', conductance: 0.5 },  // -Z → Payload
+  { from: 6, to: 7, type: 'linear', conductance: 1.2 },  // OBC ↔ Battery (PCB stack)
+  { from: 8, to: 9, type: 'linear', conductance: 0.8 },  // RF ↔ Payload (PCB stack)
+  // 6 chassis rail conductors — aluminium rails running 340mm along Z-axis, connecting adjacent side panels
+  // G_rail ≈ 0.8 W/K (k_Al=170 W/m·K, A=10×10mm, L=340mm, × 2 rails per pair, with contact resistance)
+  { from: 0, to: 1, type: 'linear', conductance: 0.8 },  // +X ↔ -X (opposite faces, 2 shared rails)
+  { from: 2, to: 3, type: 'linear', conductance: 0.8 },  // +Y ↔ -Y (opposite faces, 2 shared rails)
+  { from: 0, to: 2, type: 'linear', conductance: 0.5 },  // +X ↔ +Y (corner rail)
+  { from: 0, to: 3, type: 'linear', conductance: 0.5 },  // +X ↔ -Y (corner rail)
+  { from: 1, to: 2, type: 'linear', conductance: 0.5 },  // -X ↔ +Y (corner rail)
+  { from: 1, to: 3, type: 'linear', conductance: 0.5 },  // -X ↔ -Y (corner rail)
   // 6 radiative
   { from: 0, to: 4, type: 'radiation', viewFactor: 0.12 },
   { from: 2, to: 4, type: 'radiation', viewFactor: 0.15 },
@@ -120,7 +128,7 @@ const CONDUCTOR_DEFS: ConductorDef[] = [
   // Surfaces with OLR heat load (earth_facing / nadir): F_space ≈ 0.15 (mostly faces Earth)
   { from: 0,  to: 12, type: 'radiation', viewFactor: 0.50 },  // +X Panel (solar/side) — has OLR load
   { from: 1,  to: 12, type: 'radiation', viewFactor: 0.85 },  // -X Panel (anti_earth) — no OLR load ✓
-  { from: 2,  to: 12, type: 'radiation', viewFactor: 0.50 },  // +Y Panel (solar/side) — has OLR load
+  { from: 2,  to: 12, type: 'radiation', viewFactor: 0.85 },  // +Y Panel (anti_earth in hot case) — no OLR load ✓
   { from: 3,  to: 12, type: 'radiation', viewFactor: 0.85 },  // -Y Panel (anti_earth) — no OLR load ✓
   { from: 4,  to: 12, type: 'radiation', viewFactor: 0.85 },  // +Z Radiator (anti_earth/zenith) — no OLR ✓
   { from: 5,  to: 12, type: 'radiation', viewFactor: 0.15 },  // -Z Panel (earth_facing/nadir) — has OLR load
@@ -175,6 +183,7 @@ async function seedDemo(): Promise<void> {
     inclination: 51.6,
     raan: 180,
     epoch: '2025-06-21T12:00:00Z', // Summer solstice — beta ≈ 74.8° → no eclipse (hot case)
+    attitude: 'nadir_pointing',
   };
 
   await seedDb.insert(thermalModels).values({
@@ -251,14 +260,14 @@ async function seedDemo(): Promise<void> {
   }
   
   // Orbital heat loads for external surfaces
-  const orbitalSurfaces: Array<{ idx: number; surfaceType: 'solar' | 'earth_facing' | 'anti_earth' }> = [
-    { idx: 0, surfaceType: 'solar' },       // +X Panel (solar-facing)
-    { idx: 1, surfaceType: 'anti_earth' },   // -X Panel
-    { idx: 2, surfaceType: 'solar' },        // +Y Panel (solar-facing)
-    { idx: 3, surfaceType: 'anti_earth' },   // -Y Panel
-    { idx: 4, surfaceType: 'anti_earth' },   // +Z Radiator (zenith)
-    { idx: 5, surfaceType: 'earth_facing' }, // -Z Panel (nadir)
-    { idx: 10, surfaceType: 'earth_facing' },// Separation Ring
+  const orbitalSurfaces = [
+    { idx: 0, surfaceType: 'solar' as const,        surfaceNormal: { x:  1, y: 0, z: 0 } }, // +X (velocity)
+    { idx: 1, surfaceType: 'anti_earth' as const,   surfaceNormal: { x: -1, y: 0, z: 0 } }, // -X (anti-velocity)
+    { idx: 2, surfaceType: 'anti_earth' as const,   surfaceNormal: { x: 0,  y: 1, z: 0 } }, // +Y (orbit normal) ← HOT face for high-beta
+    { idx: 3, surfaceType: 'anti_earth' as const,   surfaceNormal: { x: 0,  y: -1,z: 0 } }, // -Y (anti-orbit-normal)
+    { idx: 4, surfaceType: 'anti_earth' as const,   surfaceNormal: { x: 0,  y: 0, z: 1 } }, // +Z (zenith/radiator)
+    { idx: 5, surfaceType: 'earth_facing' as const, surfaceNormal: { x: 0,  y: 0, z: -1} }, // -Z (nadir)
+    { idx: 10,surfaceType: 'earth_facing' as const, surfaceNormal: { x: 0,  y: 0, z: -1} }, // Sep ring (nadir-ish)
   ];
   
   for (const surf of orbitalSurfaces) {
@@ -275,6 +284,7 @@ async function seedDemo(): Promise<void> {
         absorptivity: def.alpha,
         emissivity: def.eps,
         area: def.area,
+        surfaceNormal: surf.surfaceNormal,
       },
     });
     console.log(`    ✓ ${def.name}: orbital (${surf.surfaceType})`);

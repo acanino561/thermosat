@@ -56,6 +56,9 @@ export interface OrbitalHeatLoadParams {
   absorptivity: number;
   emissivity: number;
   area: number; // m²
+  /** Body-frame unit vector pointing outward from this surface.
+   *  If omitted, falls back to legacy binary surface-type behaviour. */
+  surfaceNormal?: { x: number; y: number; z: number };
 }
 
 export interface SolverHeatLoad {
@@ -80,6 +83,12 @@ export interface OrbitalConfig {
   epoch: string; // ISO date
   apogeeAltitude?: number; // km (HEO only)
   perigeeAltitude?: number; // km (HEO only)
+  /** Spacecraft attitude mode. Default: 'nadir_pointing'.
+   *  - 'nadir_pointing': body -Z toward Earth, body +Z toward space (zenith).
+   *      body +X = velocity (along-track), body +Y = orbit normal.
+   *  - 'sun_pointing': body +X always toward sun (single-axis solar tracker, legacy behaviour).
+   */
+  attitude?: 'nadir_pointing' | 'sun_pointing';
 }
 
 export interface OrbitalEnvironment {
@@ -99,6 +108,10 @@ export interface OrbitalHeatProfile {
   albedoFlux: number[]; // W/m² at each time
   earthIR: number[]; // W/m² at each time (constant for MVP)
   inSunlight: boolean[]; // true/false at each time
+  /** Sun unit vector expressed in LVLH frame at each orbital timestep.
+   *  LVLH convention: +x = along-track (velocity), +y = orbit normal, +z = nadir.
+   *  Length matches `times`. */
+  sunDirectionLVLH?: Array<{ x: number; y: number; z: number }>;
 }
 
 // ── Thermal Network ─────────────────────────────────────────────────────────
