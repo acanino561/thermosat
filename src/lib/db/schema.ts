@@ -752,3 +752,82 @@ export const explorationResults = pgTable(
     explorationIdIdx: index('exploration_results_exploration_id_idx').on(table.explorationId),
   }),
 );
+
+// ── Collaboration & Review ─────────────────────────────────────────────────
+
+export const sharePermissionEnum = pgEnum('share_permission', ['view', 'edit']);
+
+export const shareLinks = pgTable(
+  'share_links',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    permission: sharePermissionEnum('permission').default('view').notNull(),
+    token: text('token').notNull().unique(),
+    accessCount: integer('access_count').default(0).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    expiresAt: timestamp('expires_at', { mode: 'date' }),
+    revokedAt: timestamp('revoked_at', { mode: 'date' }),
+  },
+  (table) => ({
+    modelIdIdx: index('share_links_model_id_idx').on(table.modelId),
+    tokenIdx: index('share_links_token_idx').on(table.token),
+  }),
+);
+
+export const modelComments = pgTable(
+  'model_comments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    parentId: uuid('parent_id'),
+    position3d: jsonb('position_3d').$type<{ x: number; y: number; z: number }>(),
+    nodeId: uuid('node_id').references(() => thermalNodes.id, { onDelete: 'set null' }),
+    content: text('content').notNull(),
+    mentions: jsonb('mentions').$type<string[]>().default([]).notNull(),
+    resolved: boolean('resolved').default(false).notNull(),
+    resolvedBy: uuid('resolved_by').references(() => users.id, { onDelete: 'set null' }),
+    resolvedAt: timestamp('resolved_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    modelIdIdx: index('model_comments_model_id_idx').on(table.modelId),
+  }),
+);
+
+export const reviewStatusEnum = pgEnum('review_status_type', [
+  'draft',
+  'in_review',
+  'approved',
+  'needs_changes',
+]);
+
+export const reviewStatuses = pgTable(
+  'review_statuses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    status: reviewStatusEnum('status').default('draft').notNull(),
+    changedBy: uuid('changed_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    note: text('note'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    modelIdIdx: index('review_statuses_model_id_idx').on(table.modelId),
+  }),
+);
