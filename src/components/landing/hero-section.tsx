@@ -1,14 +1,8 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
-
-const SatelliteScene = dynamic(
-  () => import('@/components/three/satellite-scene').then((mod) => mod.SatelliteScene),
-  { ssr: false },
-);
 
 interface TelemetryPoint {
   label: string;
@@ -139,7 +133,17 @@ export function HeroSection() {
         style={{ y: sceneY, opacity: fadeOut }}
         className="absolute inset-0 lg:left-[35%]"
       >
-        <SatelliteScene />
+        {/* TEST: stock video hero — swap back to SatelliteScene when done evaluating */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: 'center center' }}
+        >
+          <source src="/hero-test.mp4" type="video/mp4" />
+        </video>
         <div
           className="absolute inset-0"
           style={{
