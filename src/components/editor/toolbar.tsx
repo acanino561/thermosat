@@ -39,9 +39,11 @@ import Link from 'next/link';
 
 interface ToolbarProps {
   projectId: string;
+  role?: 'owner' | 'admin' | 'editor' | 'viewer';
 }
 
-export function Toolbar({ projectId }: ToolbarProps) {
+export function Toolbar({ projectId, role }: ToolbarProps) {
+  const isViewer = role === 'viewer';
   const {
     modelName,
     isDirty,
@@ -161,15 +163,26 @@ export function Toolbar({ projectId }: ToolbarProps) {
 
         <Separator orientation="vertical" className="h-6 mx-2" />
 
-        {/* Add elements */}
-        <AddNodeDialog />
-        <AddConductorDialog />
-        <AddHeatLoadDialog />
+        {/* View Only badge for viewers */}
+        {isViewer && (
+          <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-amber-400 border-amber-400/40 uppercase tracking-wider font-semibold">
+            View Only
+          </Badge>
+        )}
 
-        <Separator orientation="vertical" className="h-6 mx-2" />
+        {/* Add elements — hidden for viewers */}
+        {!isViewer && (
+          <>
+            <AddNodeDialog />
+            <AddConductorDialog />
+            <AddHeatLoadDialog />
+          </>
+        )}
+
+        {!isViewer && <Separator orientation="vertical" className="h-6 mx-2" />}
 
         {/* CAD Import */}
-        <ImportCadButton />
+        {!isViewer && <ImportCadButton />}
 
         <Separator orientation="vertical" className="h-6 mx-2" />
 
@@ -274,26 +287,28 @@ export function Toolbar({ projectId }: ToolbarProps) {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Run Simulation */}
-        <Button
-          variant="glow-orange"
-          size="default"
-          className="gap-2"
-          onClick={handleRunSimulation}
-          disabled={simulationStatus === 'running'}
-        >
-          {simulationStatus === 'running' ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Running...
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" />
-              Run Simulation
-            </>
-          )}
-        </Button>
+        {/* Run Simulation — hidden for viewers */}
+        {!isViewer && (
+          <Button
+            variant="glow-orange"
+            size="default"
+            className="gap-2"
+            onClick={handleRunSimulation}
+            disabled={simulationStatus === 'running'}
+          >
+            {simulationStatus === 'running' ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                Run Simulation
+              </>
+            )}
+          </Button>
+        )}
       </motion.div>
 
       {/* History panel (collapsible, below toolbar) */}
