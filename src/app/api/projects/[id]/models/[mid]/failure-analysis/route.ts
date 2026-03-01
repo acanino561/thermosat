@@ -17,7 +17,6 @@ import {
   notFoundResponse,
   serverErrorResponse,
   forbiddenResponse,
-  parseJsonBody,
 } from '@/lib/utils/api-helpers';
 import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
 import { buildThermalNetwork, runSimulation } from '@/lib/solver/thermal-network';
@@ -61,10 +60,12 @@ export async function POST(
     if (!model) return notFoundResponse('Model');
 
     // Parse request body
-    interface FailureAnalysisBody {
-      cases?: Array<{ failureType: FailureType; params?: FailureModeParams; label?: string }>;
+    let body: { cases: Array<{ failureType: FailureType; params?: FailureModeParams; label?: string }> };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
-    const body = await parseJsonBody<FailureAnalysisBody>(request);
     if (!body || !Array.isArray(body.cases) || body.cases.length === 0) {
       return NextResponse.json(
         { error: 'Request must include a non-empty "cases" array' },
