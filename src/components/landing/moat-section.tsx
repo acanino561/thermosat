@@ -174,7 +174,7 @@ function MoatItem({ item, index }: { item: typeof items[number]; index: number }
         <div className={`flex items-center gap-8 lg:gap-0 ${isLeft ? '' : 'flex-row-reverse'}`}>
 
           {/* Content block */}
-          <div className={`w-full lg:w-[58%] ${isLeft ? 'lg:pr-8' : 'lg:pl-8'}`}>
+          <div className={`w-full lg:w-[58%] ${isLeft ? 'lg:pr-8 lg:pl-4' : 'lg:pl-8 lg:pr-4'}`}>
             {/* Number + title */}
             <div className="flex items-baseline gap-4 mb-4">
               <motion.span
@@ -275,7 +275,7 @@ export function MoatSection() {
         </motion.div>
 
         {/* Staggered items — narrower container for tighter editorial feel */}
-        <div className="max-w-[860px] mx-auto">
+        <div className="max-w-[860px] mx-auto lg:px-10">
           {items.map((item, i) => (
             <MoatItem key={item.num} item={item} index={i} />
           ))}
