@@ -19,24 +19,30 @@ const plexSans = IBM_Plex_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Verixos — Spacecraft Thermal Analysis',
+    default: 'Verixos — Spacecraft Thermal Analysis Software',
     template: '%s | Verixos',
   },
   description:
-    'Professional thermal analysis software for spacecraft engineers. 3D CAD import, orbital solver, V&V benchmarks.',
+    'Browser-native spacecraft thermal analysis. Physics-accurate RK4 solver, orbit playback with shadows, What If instant replay. 10/10 V&V benchmarks.',
+  keywords: [
+    'spacecraft thermal analysis',
+    'satellite thermal modeling',
+    'online thermal desktop alternative',
+    'CubeSat thermal analysis',
+    'spacecraft thermal software',
+  ],
   openGraph: {
-    title: 'Verixos — Spacecraft Thermal Analysis',
-    description: 'Professional thermal analysis software for spacecraft engineers. 3D CAD import, orbital solver, V&V benchmarks.',
+    title: 'Verixos — Spacecraft Thermal Analysis Software',
+    description: 'Physics-accurate spacecraft thermal analysis in your browser.',
+    url: 'https://thermosat.vercel.app',
+    siteName: 'Verixos',
     type: 'website',
   },
-  keywords: [
-    'spacecraft',
-    'thermal analysis',
-    'thermal desktop',
-    'satellite',
-    'space engineering',
-    'thermal simulation',
-  ],
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Verixos — Spacecraft Thermal Analysis Software',
+    description: 'Browser-native spacecraft thermal analysis. RK4 solver. 10/10 V&V benchmarks.',
+  },
 };
 
 export default function RootLayout({
