@@ -11,10 +11,17 @@ import { useState } from 'react';
 import { WhatIfPanel } from '@/components/results/what-if-panel';
 import { FailureModePanel } from '@/components/results/failure-mode-panel';
 import { RiskMatrix } from '@/components/results/risk-matrix';
+import { DesignSpaceSetup } from '@/components/results/design-space-setup';
+import { DesignSpaceChart } from '@/components/results/design-space-chart';
+import { DesignSpaceResultsTable } from '@/components/results/design-space-results-table';
+import type { ExplorationSampleResult, ExplorationParameter } from '@/lib/solver/design-space';
 
 export function PropertiesPanel() {
   const [failureModalOpen, setFailureModalOpen] = useState(false);
   const [failureAnalysisId, setFailureAnalysisId] = useState<string | null>(null);
+  const [explorationId, setExplorationId] = useState<string | null>(null);
+  const [explorationResults, setExplorationResults] = useState<ExplorationSampleResult[] | null>(null);
+  const [explorationParams, setExplorationParams] = useState<ExplorationParameter[]>([]);
   const selectedNodeId = useEditorStore((s) => s.selectedNodeId);
   const selectedConductorId = useEditorStore((s) => s.selectedConductorId);
   const selectedCadFaceIds = useEditorStore((s) => s.selectedCadFaceIds);
@@ -86,6 +93,65 @@ export function PropertiesPanel() {
             <div className="mt-4 pt-4 border-t border-white/10">
               <RiskMatrix analysisId={failureAnalysisId} projectId={projectId} modelId={modelId} />
             </div>
+          )}
+
+          {/* Design Space Explorer */}
+          {showResultsOverlay && simulationResults && projectId && modelId && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <DesignSpaceSetup
+                projectId={projectId}
+                modelId={modelId}
+                onExplorationComplete={async (explorationId) => {
+                  const res = await fetch(`/api/projects/${projectId}/models/${modelId}/design-explorations/${explorationId}/results`);
+                  const data = await res.json();
+                  setExplorationResults(data.data.results);
+                  setExplorationParams(data.data.exploration.config.parameters);
+                }}
+              />
+            </div>
+          )}
+          {explorationResults && explorationParams.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-4">
+              <DesignSpaceChart results={explorationResults} parameters={explorationParams} />
+              <DesignSpaceResultsTable results={explorationResults} parameters={explorationParams} />
+            </div>
+          )}
+
+          {/* Design Space Explorer */}
+          {showResultsOverlay && simulationResults && projectId && modelId && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <DesignSpaceSetup
+                projectId={projectId}
+                modelId={modelId}
+                onExplorationComplete={async (id) => {
+                  setExplorationId(id);
+                  try {
+                    const res = await fetch(
+                      `/api/projects/${projectId}/models/${modelId}/design-explorations/${id}/results`,
+                    );
+                    if (res.ok) {
+                      const data = await res.json();
+                      setExplorationResults(data.results ?? data.data?.results ?? []);
+                      setExplorationParams(data.config?.parameters ?? data.data?.config?.parameters ?? []);
+                    }
+                  } catch {
+                    // Results will be fetched on retry
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          {/* Design Space Results */}
+          {explorationResults && explorationResults.length > 0 && (
+            <>
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <DesignSpaceChart results={explorationResults} parameters={explorationParams} />
+              </div>
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <DesignSpaceResultsTable results={explorationResults} parameters={explorationParams} />
+              </div>
+            </>
           )}
         </div>
       </ScrollArea>
