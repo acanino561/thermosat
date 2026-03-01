@@ -5,6 +5,23 @@ import Link from 'next/link';
 
 const plans = [
   {
+    name: 'ACADEMIC',
+    price: 'FREE',
+    period: '',
+    desc: 'For students, researchers, and university programs.',
+    specs: [
+      { key: 'NODES', value: 'Up to 25' },
+      { key: 'MODELS', value: '1 active' },
+      { key: 'SOLVERS', value: 'All physics' },
+      { key: 'BENCHMARKS', value: 'TFAWS-standard' },
+      { key: 'API', value: 'No access' },
+      { key: 'APPROVAL', value: '.edu or manual' },
+    ],
+    cta: 'APPLY FOR ACCESS',
+    href: 'mailto:hello@verixos.com?subject=Academic Access Request',
+    primary: false,
+  },
+  {
     name: 'STARTER',
     price: '$2,000',
     period: '/year',
@@ -76,7 +93,7 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-px" style={{ backgroundColor: 'var(--tc-border)' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px" style={{ backgroundColor: 'var(--tc-border)' }}>
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
