@@ -952,6 +952,54 @@ export const reviewStatuses = pgTable(
 
 // ── Subscriptions / Billing ────────────────────────────────────────────────
 
+// ── Webhooks ───────────────────────────────────────────────────────────────
+
+export const webhooks = pgTable(
+  'webhooks',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    orgId: uuid('org_id').references(() => organizations.id, {
+      onDelete: 'cascade',
+    }),
+    url: text('url').notNull(),
+    secretHash: text('secret_hash').notNull(),
+    label: text('label').notNull(),
+    events: jsonb('events').$type<string[]>().notNull().default([]),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('webhooks_user_id_idx').on(table.userId),
+  }),
+);
+
+export const webhookDeliveries = pgTable(
+  'webhook_deliveries',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    webhookId: uuid('webhook_id')
+      .notNull()
+      .references(() => webhooks.id, { onDelete: 'cascade' }),
+    eventType: text('event_type').notNull(),
+    payload: jsonb('payload').notNull(),
+    status: text('status').notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    lastAttemptAt: timestamp('last_attempt_at', { mode: 'date' }),
+    httpStatus: integer('http_status'),
+    responseBody: text('response_body'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    webhookIdIdx: index('webhook_deliveries_webhook_id_idx').on(table.webhookId),
+  }),
+);
+
+// ── Subscriptions / Billing ────────────────────────────────────────────────
+
 export const subscriptions = pgTable(
   'subscriptions',
   {
