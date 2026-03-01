@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client';
 import { thermalNodes } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { createNodeSchema } from '@/lib/validators/nodes';
+import { enforceTierLimit, TierLimitError } from '@/lib/billing/limits';
 import {
   getAuthenticatedUser,
   unauthorizedResponse,
@@ -57,6 +58,20 @@ export async function POST(
     if (!project) return notFoundResponse('Project');
     const model = await verifyModelOwnership(mid, id);
     if (!model) return notFoundResponse('Model');
+
+    // Enforce tier limit on node count
+    const existingNodes = await db.select().from(thermalNodes).where(eq(thermalNodes.modelId, mid));
+    try {
+      await enforceTierLimit(user.id, 'nodes', existingNodes.length);
+    } catch (err) {
+      if (err instanceof TierLimitError) {
+        return NextResponse.json(
+          { error: { code: 'TIER_LIMIT_EXCEEDED', message: err.message, upgradeUrl: '/dashboard/settings/billing' } },
+          { status: 403 }
+        );
+      }
+      throw err;
+    }
 
     const body = await parseJsonBody(request);
     if (!body) {

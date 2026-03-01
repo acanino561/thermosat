@@ -20,6 +20,7 @@ import {
   forbiddenResponse,
 } from '@/lib/utils/api-helpers';
 import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
+import { enforceTierLimit, TierLimitError } from '@/lib/billing/limits';
 import { buildThermalNetwork, runSimulation } from '@/lib/solver/thermal-network';
 import { computeEnergyBalance } from '@/lib/solver/energy-balance';
 import { computeSensitivityMatrix } from '@/lib/solver/sensitivity';
@@ -55,6 +56,23 @@ export async function POST(
       requireRole(role, 'editor');
     } catch {
       return forbiddenResponse();
+    }
+
+    // Enforce tier limit on simulation count
+    const existingRuns = await db
+      .select()
+      .from(simulationRuns)
+      .where(eq(simulationRuns.modelId, mid));
+    try {
+      await enforceTierLimit(user.id, 'sims', existingRuns.length);
+    } catch (err) {
+      if (err instanceof TierLimitError) {
+        return NextResponse.json(
+          { error: { code: 'TIER_LIMIT_EXCEEDED', message: err.message, upgradeUrl: '/dashboard/settings/billing' } },
+          { status: 403 }
+        );
+      }
+      throw err;
     }
 
     // Get model
