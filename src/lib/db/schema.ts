@@ -211,6 +211,30 @@ export const teamMembers = pgTable(
   }),
 );
 
+// ── SSO / SAML ─────────────────────────────────────────────────────────────
+
+export const ssoConfigs = pgTable(
+  'sso_configs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orgId: uuid('org_id')
+      .notNull()
+      .unique()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    entityId: text('entity_id').notNull(),
+    ssoUrl: text('sso_url').notNull(),
+    certificate: text('certificate').notNull(),
+    metadataUrl: text('metadata_url'),
+    domainEnforced: boolean('domain_enforced').notNull().default(false),
+    enabled: boolean('enabled').notNull().default(false),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index('sso_configs_org_id_idx').on(table.orgId),
+  }),
+);
+
 // ── Application Tables ─────────────────────────────────────────────────────
 
 export const projects = pgTable(
