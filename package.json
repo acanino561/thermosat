@@ -18,8 +18,8 @@
     "postinstall": "cp node_modules/occt-import-js/dist/occt-import-js.wasm public/wasm/ && cp node_modules/occt-import-js/dist/occt-import-js.js public/wasm/"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
     "@auth/drizzle-adapter": "^1.11.1",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
     "@neondatabase/serverless": "^0.10.0",
     "@node-saml/node-saml": "^5.1.0",
