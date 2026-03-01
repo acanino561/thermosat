@@ -19,6 +19,7 @@ import {
   forbiddenResponse,
 } from '@/lib/utils/api-helpers';
 import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
+import { deliverWebhookEvent } from '@/lib/webhooks/deliver';
 
 interface RouteParams {
   params: Promise<{ id: string; mid: string }>;
@@ -165,6 +166,14 @@ export async function PUT(
         });
       } catch { /* audit best-effort */ }
 
+      // Fire webhook for model update
+      deliverWebhookEvent(user.id, 'model.updated', {
+        modelId: mid,
+        projectId: id,
+        version: newVersion,
+        timestamp: new Date().toISOString(),
+      }).catch((err) => console.error('Webhook delivery error:', err));
+
       return NextResponse.json({
         model: updated,
         savedAt: new Date().toISOString(),
@@ -207,6 +216,13 @@ export async function PUT(
         userAgent: request.headers.get('user-agent') ?? undefined,
       });
     } catch { /* audit best-effort */ }
+
+    // Fire webhook for model update
+    deliverWebhookEvent(user.id, 'model.updated', {
+      modelId: mid,
+      projectId: id,
+      timestamp: new Date().toISOString(),
+    }).catch((err) => console.error('Webhook delivery error:', err));
 
     return NextResponse.json({ model: updated });
   } catch (error) {

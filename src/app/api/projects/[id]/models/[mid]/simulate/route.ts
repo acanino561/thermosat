@@ -25,6 +25,7 @@ import { computeEnergyBalance } from '@/lib/solver/energy-balance';
 import { computeSensitivityMatrix } from '@/lib/solver/sensitivity';
 import { sensitivityMatrices } from '@/lib/db/schema';
 import type { OrbitalConfig, SimulationConfig } from '@/lib/solver/types';
+import { deliverWebhookEvent } from '@/lib/webhooks/deliver';
 
 interface RouteParams {
   params: Promise<{ id: string; mid: string }>;
@@ -243,6 +244,15 @@ export async function POST(
         })
         .where(eq(simulationRuns.id, run.id));
 
+      // Fire webhook event for simulation completion
+      deliverWebhookEvent(user.id, 'simulation.completed', {
+        runId: run.id,
+        modelId: mid,
+        projectId: id,
+        status: 'completed',
+        timestamp: new Date().toISOString(),
+      }).catch((err) => console.error('Webhook delivery error:', err));
+
       // Kick off sensitivity computation in background (non-blocking)
       try {
         const [sensRow] = await db
@@ -304,6 +314,16 @@ export async function POST(
           errorMessage,
         })
         .where(eq(simulationRuns.id, run.id));
+
+      // Fire webhook event for simulation failure
+      deliverWebhookEvent(user.id, 'simulation.failed', {
+        runId: run.id,
+        modelId: mid,
+        projectId: id,
+        status: 'failed',
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+      }).catch((err) => console.error('Webhook delivery error:', err));
 
       return NextResponse.json(
         {
