@@ -1,22 +1,21 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
-import { Loader2, AlertTriangle, Play } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
-// ─── Types ──────────────────────────────────────────────────────────────
+// Type definitions
+interface FailureCaseConfig {
+  failureType: string;
+  params: Record<string, unknown>;
+  label: string;
+}
 
 export interface RiskMatrixCase {
   caseId: string;
@@ -24,20 +23,20 @@ export interface RiskMatrixCase {
   minTemp: number;
   maxTemp: number;
   meanTemp: number;
-  status?: 'pass' | 'warn' | 'fail';
+  status: 'pass' | 'warn' | 'fail';
 }
 
 export interface RiskMatrixRow {
   nodeId: string;
   nodeName: string;
-  tempLimitMin?: number | null;
-  tempLimitMax?: number | null;
+  tempLimitMin?: number;
+  tempLimitMax?: number;
   cases: RiskMatrixCase[];
 }
 
 export interface RiskMatrixData {
   analysisId: string;
-  cases: Array<{ id: string; failureType: string; label?: string | null; runId: string | null }>;
+  cases: Array<{ id: string; failureType: string; label?: string; runId: string }>;
   riskMatrix: RiskMatrixRow[];
 }
 
@@ -47,258 +46,192 @@ interface FailureModePanelProps {
   onAnalysisComplete: (data: RiskMatrixData) => void;
 }
 
-// ─── Failure type definitions ───────────────────────────────────────────
-
-interface FailureTypeDef {
-  key: string;
-  label: string;
-  hasParams: boolean;
-}
-
-const FAILURE_TYPES: FailureTypeDef[] = [
-  { key: 'heater_failure', label: 'Heater Failure', hasParams: false },
-  { key: 'mli_degradation', label: 'MLI Degradation', hasParams: true },
-  { key: 'coating_degradation_eol', label: 'Coating Degradation (EOL)', hasParams: true },
-  { key: 'attitude_loss_tumble', label: 'Attitude Loss / Tumble', hasParams: false },
-  { key: 'power_budget_reduction', label: 'Power Budget Reduction', hasParams: true },
-  { key: 'conductor_failure', label: 'Conductor Failure', hasParams: true },
-  { key: 'component_power_spike', label: 'Component Power Spike', hasParams: true },
+const FAILURE_TYPES = [
+  { type: 'heater_failure', label: 'Heater Failure', description: 'All constant heater outputs set to 0 W' },
+  { type: 'mli_degradation', label: 'MLI Degradation', description: 'MLI emissivity multiplied by degradation factor' },
+  { type: 'coating_degradation_eol', label: 'Coating Degradation (EOL)', description: 'Absorptivity increased on surface nodes' },
+  { type: 'attitude_loss_tumble', label: 'Attitude Loss / Tumble', description: 'Solar flux averaged over all faces' },
+  { type: 'power_budget_reduction', label: 'Power Budget Reduction', description: 'Internal dissipation scaled down' },
+  { type: 'conductor_failure', label: 'Conductor Failure', description: 'Selected conductor conductance set to 0' },
+  { type: 'component_power_spike', label: 'Component Power Spike', description: 'Selected node heat loads multiplied by spike factor' },
 ];
-
-// ─── Component ──────────────────────────────────────────────────────────
 
 export function FailureModePanel({ projectId, modelId, onAnalysisComplete }: FailureModePanelProps) {
   const nodes = useEditorStore((s) => s.nodes);
   const conductors = useEditorStore((s) => s.conductors);
-
+  
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [params, setParams] = useState<Record<string, Record<string, number | string>>>({
-    mli_degradation: { degradationFactor: 5 },
-    coating_degradation_eol: { absorptivityDelta: 0.05 },
-    power_budget_reduction: { reductionFactor: 0.5 },
-    conductor_failure: { conductorId: '' },
-    component_power_spike: { nodeId: '', spikeFactor: 2 },
-  });
+  const [params, setParams] = useState<Record<string, Record<string, unknown>>>({});
   const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const selectedCount = useMemo(
-    () => Object.values(selected).filter(Boolean).length,
-    [selected],
-  );
+  const toggleCase = (type: string) => {
+    setSelected(prev => ({ ...prev, [type]: !prev[type] }));
+  };
 
-  const toggleCase = useCallback((key: string) => {
-    setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+  const setParam = (type: string, key: string, value: unknown) => {
+    setParams(prev => ({ ...prev, [type]: { ...(prev[type] || {}), [key]: value } }));
+  };
 
-  const updateParam = useCallback((failureType: string, paramKey: string, value: number | string) => {
-    setParams((prev) => ({
-      ...prev,
-      [failureType]: { ...prev[failureType], [paramKey]: value },
-    }));
-  }, []);
+  const getParam = (type: string, key: string, defaultValue: unknown) => {
+    return params[type]?.[key] ?? defaultValue;
+  };
 
-  const handleRun = useCallback(async () => {
+  const selectedCount = Object.values(selected).filter(Boolean).length;
+
+  const runAnalysis = async () => {
     setIsRunning(true);
+    setError(null);
     try {
-      const cases = FAILURE_TYPES
-        .filter((ft) => selected[ft.key])
-        .map((ft) => {
-          const caseObj: { failureType: string; params?: Record<string, number | string> } = {
-            failureType: ft.key,
-          };
-          if (ft.hasParams && params[ft.key]) {
-            caseObj.params = { ...params[ft.key] };
-          }
-          return caseObj;
-        });
+      const cases: FailureCaseConfig[] = FAILURE_TYPES
+        .filter(ft => selected[ft.type])
+        .map(ft => ({
+          failureType: ft.type,
+          label: ft.label,
+          params: params[ft.type] || {},
+        }));
 
-      const res = await fetch(
-        `/api/projects/${projectId}/models/${modelId}/failure-analysis`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cases }),
-        },
-      );
-
-      if (!res.ok) {
-        console.error('Failure analysis POST failed:', await res.text());
-        return;
-      }
-
+      const res = await fetch(`/api/projects/${projectId}/models/${modelId}/failure-analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cases }),
+      });
+      if (!res.ok) throw new Error('Analysis failed');
       const data = await res.json();
-      const analysisId = data.analysisId as string;
-
+      
       // Fetch results
-      const resultsRes = await fetch(
-        `/api/projects/${projectId}/models/${modelId}/failure-analysis/${analysisId}/results`,
+      const resultRes = await fetch(
+        `/api/projects/${projectId}/models/${modelId}/failure-analysis/${data.data.analysisId}/results`
       );
-
-      if (!resultsRes.ok) {
-        console.error('Failure analysis results fetch failed:', await resultsRes.text());
-        return;
-      }
-
-      const riskMatrixData: RiskMatrixData = await resultsRes.json();
-      onAnalysisComplete(riskMatrixData);
-    } catch (error) {
-      console.error('Failure analysis error:', error);
+      if (!resultRes.ok) throw new Error('Failed to fetch results');
+      const resultData = await resultRes.json();
+      onAnalysisComplete(resultData.data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setIsRunning(false);
     }
-  }, [selected, params, projectId, modelId, onAnalysisComplete]);
+  };
 
   return (
-    <div className="glass rounded-xl p-4 space-y-4">
-      {/* Header */}
+    <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 text-red-400" />
-        <h3 className="font-heading text-sm font-semibold">Failure Mode Analysis</h3>
+        <AlertTriangle className="h-4 w-4 text-amber-400" />
+        <h4 className="text-sm font-semibold text-foreground">Failure Mode Analysis</h4>
       </div>
-
-      {/* Failure type checkboxes */}
-      <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
+      
+      <div className="space-y-2">
         {FAILURE_TYPES.map((ft) => (
-          <div key={ft.key} className="space-y-2">
-            <div className="flex items-center gap-2">
+          <div key={ft.type} className="space-y-1.5">
+            <div className="flex items-start gap-2">
               <Checkbox
-                id={`fm-${ft.key}`}
-                checked={!!selected[ft.key]}
-                onCheckedChange={() => toggleCase(ft.key)}
+                id={ft.type}
+                checked={!!selected[ft.type]}
+                onCheckedChange={() => toggleCase(ft.type)}
+                className="mt-0.5"
               />
-              <label
-                htmlFor={`fm-${ft.key}`}
-                className="text-xs font-mono text-slate-300 cursor-pointer"
-              >
-                {ft.label}
-              </label>
+              <div className="flex-1 min-w-0">
+                <Label htmlFor={ft.type} className="text-xs font-medium cursor-pointer">
+                  {ft.label}
+                </Label>
+                <p className="text-xs text-muted-foreground">{ft.description}</p>
+              </div>
             </div>
-
-            {/* Inline params when selected */}
-            {selected[ft.key] && ft.key === 'mli_degradation' && (
-              <div className="ml-6 flex items-center gap-2">
-                <span className="text-[10px] font-mono text-slate-500">Degradation factor</span>
-                <Input
-                  type="number"
-                  value={params.mli_degradation?.degradationFactor ?? 5}
-                  onChange={(e) => updateParam('mli_degradation', 'degradationFactor', parseFloat(e.target.value) || 5)}
-                  className="h-6 w-16 text-xs font-mono bg-white/5 border-white/10"
-                />
-              </div>
-            )}
-
-            {selected[ft.key] && ft.key === 'coating_degradation_eol' && (
-              <div className="ml-6 flex items-center gap-2">
-                <span className="text-[10px] font-mono text-slate-500">Absorptivity delta</span>
-                <Input
-                  type="number"
-                  step={0.01}
-                  value={params.coating_degradation_eol?.absorptivityDelta ?? 0.05}
-                  onChange={(e) => updateParam('coating_degradation_eol', 'absorptivityDelta', parseFloat(e.target.value) || 0.05)}
-                  className="h-6 w-16 text-xs font-mono bg-white/5 border-white/10"
-                />
-              </div>
-            )}
-
-            {selected[ft.key] && ft.key === 'power_budget_reduction' && (
-              <div className="ml-6 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-slate-500">Reduction</span>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    {Math.round((params.power_budget_reduction?.reductionFactor as number ?? 0.5) * 100)}%
-                  </span>
-                </div>
-                <Slider
-                  min={0.1}
-                  max={0.9}
-                  step={0.05}
-                  value={[params.power_budget_reduction?.reductionFactor as number ?? 0.5]}
-                  onValueChange={([v]) => updateParam('power_budget_reduction', 'reductionFactor', v)}
-                />
-                <div className="flex justify-between text-[9px] font-mono text-slate-600">
-                  <span>10%</span>
-                  <span>90%</span>
-                </div>
-              </div>
-            )}
-
-            {selected[ft.key] && ft.key === 'conductor_failure' && (
-              <div className="ml-6 flex items-center gap-2">
-                <span className="text-[10px] font-mono text-slate-500">Conductor</span>
-                <Select
-                  value={params.conductor_failure?.conductorId as string ?? ''}
-                  onValueChange={(v) => updateParam('conductor_failure', 'conductorId', v)}
-                >
-                  <SelectTrigger className="h-6 w-40 text-xs font-mono bg-white/5 border-white/10">
-                    <SelectValue placeholder="Select…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {conductors.map((c) => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs font-mono">
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {selected[ft.key] && ft.key === 'component_power_spike' && (
-              <div className="ml-6 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-slate-500">Node</span>
+            
+            {selected[ft.type] && (
+              <div className="ml-6 space-y-1.5 pl-2 border-l border-white/10">
+                {ft.type === 'mli_degradation' && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs w-28 shrink-0">Degradation factor</Label>
+                    <Input
+                      type="number" min={1} max={100} step={0.5}
+                      value={String(getParam(ft.type, 'degradationFactor', 5))}
+                      onChange={e => setParam(ft.type, 'degradationFactor', parseFloat(e.target.value))}
+                      className="h-6 text-xs w-16"
+                    />
+                  </div>
+                )}
+                {ft.type === 'coating_degradation_eol' && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs w-28 shrink-0">Absorptivity delta</Label>
+                    <Input
+                      type="number" min={0} max={0.5} step={0.01}
+                      value={String(getParam(ft.type, 'absorbanceDelta', 0.05))}
+                      onChange={e => setParam(ft.type, 'absorbanceDelta', parseFloat(e.target.value))}
+                      className="h-6 text-xs w-16"
+                    />
+                  </div>
+                )}
+                {ft.type === 'power_budget_reduction' && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">
+                      Power scale: {Math.round(Number(getParam(ft.type, 'powerScaleFactor', 0.5)) * 100)}%
+                    </Label>
+                    <Slider
+                      min={0.1} max={0.9} step={0.05}
+                      value={[Number(getParam(ft.type, 'powerScaleFactor', 0.5))]}
+                      onValueChange={([v]) => setParam(ft.type, 'powerScaleFactor', v)}
+                    />
+                  </div>
+                )}
+                {ft.type === 'conductor_failure' && (
                   <Select
-                    value={params.component_power_spike?.nodeId as string ?? ''}
-                    onValueChange={(v) => updateParam('component_power_spike', 'nodeId', v)}
+                    value={String(getParam(ft.type, 'conductorId', ''))}
+                    onValueChange={v => setParam(ft.type, 'conductorId', v)}
                   >
-                    <SelectTrigger className="h-6 w-40 text-xs font-mono bg-white/5 border-white/10">
-                      <SelectValue placeholder="Select…" />
+                    <SelectTrigger className="h-6 text-xs">
+                      <SelectValue placeholder="Select conductor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {nodes.map((n) => (
-                        <SelectItem key={n.id} value={n.id} className="text-xs font-mono">
-                          {n.name}
-                        </SelectItem>
+                      {conductors.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-slate-500">Spike factor</span>
-                  <Input
-                    type="number"
-                    value={params.component_power_spike?.spikeFactor ?? 2}
-                    onChange={(e) => updateParam('component_power_spike', 'spikeFactor', parseFloat(e.target.value) || 2)}
-                    className="h-6 w-16 text-xs font-mono bg-white/5 border-white/10"
-                  />
-                </div>
+                )}
+                {ft.type === 'component_power_spike' && (
+                  <div className="space-y-1.5">
+                    <Select
+                      value={String(getParam(ft.type, 'nodeId', ''))}
+                      onValueChange={v => setParam(ft.type, 'nodeId', v)}
+                    >
+                      <SelectTrigger className="h-6 text-xs">
+                        <SelectValue placeholder="Select node" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {nodes.map(n => (
+                          <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs w-20 shrink-0">Spike factor</Label>
+                      <Input
+                        type="number" min={1} max={10} step={0.5}
+                        value={String(getParam(ft.type, 'spikeFactor', 2))}
+                        onChange={e => setParam(ft.type, 'spikeFactor', parseFloat(e.target.value))}
+                        className="h-6 text-xs w-16"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* Run button */}
+      {error && <p className="text-xs text-red-400">{error}</p>}
+
       <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleRun}
+        size="sm" className="w-full h-7 text-xs"
         disabled={selectedCount === 0 || isRunning}
-        className={cn(
-          'text-xs font-mono gap-1.5 h-7 w-full',
-          'text-red-400 hover:text-red-300 hover:bg-red-500/10',
-        )}
+        onClick={runAnalysis}
       >
         {isRunning ? (
-          <>
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Running analysis…
-          </>
+          <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Running {selectedCount} case{selectedCount !== 1 ? 's' : ''}...</>
         ) : (
-          <>
-            <Play className="h-3 w-3" />
-            Run Analysis ({selectedCount} case{selectedCount !== 1 ? 's' : ''})
-          </>
+          <>Run {selectedCount} Failure Case{selectedCount !== 1 ? 's' : ''}</>
         )}
       </Button>
     </div>
