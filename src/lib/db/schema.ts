@@ -706,3 +706,49 @@ export const reports = pgTable(
     userIdIdx: index('reports_user_id_idx').on(table.userId),
   }),
 );
+
+// ── Design Space Exploration ───────────────────────────────────────────────
+
+export const explorationStatusEnum = pgEnum('exploration_status', [
+  'pending',
+  'running',
+  'completed',
+  'failed',
+]);
+
+export const designExplorations = pgTable(
+  'design_explorations',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    config: jsonb('config').notNull(),
+    status: explorationStatusEnum('status').default('pending').notNull(),
+    numSamples: integer('num_samples').notNull(),
+    completedSamples: integer('completed_samples').default(0).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date' }),
+  },
+  (table) => ({
+    modelIdIdx: index('design_explorations_model_id_idx').on(table.modelId),
+  }),
+);
+
+export const explorationResults = pgTable(
+  'exploration_results',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    explorationId: uuid('exploration_id')
+      .notNull()
+      .references(() => designExplorations.id, { onDelete: 'cascade' }),
+    sampleIndex: integer('sample_index').notNull(),
+    paramValues: jsonb('param_values').notNull(),
+    nodeResults: jsonb('node_results').notNull(),
+    feasible: boolean('feasible').notNull().default(true),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    explorationIdIdx: index('exploration_results_exploration_id_idx').on(table.explorationId),
+  }),
+);

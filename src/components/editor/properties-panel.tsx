@@ -11,10 +11,10 @@ import { useState } from 'react';
 import { WhatIfPanel } from '@/components/results/what-if-panel';
 import { FailureModePanel } from '@/components/results/failure-mode-panel';
 import { RiskMatrix } from '@/components/results/risk-matrix';
-import type { RiskMatrixData } from '@/components/results/failure-mode-panel';
 
 export function PropertiesPanel() {
-  const [riskMatrixData, setRiskMatrixData] = useState<RiskMatrixData | null>(null);
+  const [failureModalOpen, setFailureModalOpen] = useState(false);
+  const [failureAnalysisId, setFailureAnalysisId] = useState<string | null>(null);
   const selectedNodeId = useEditorStore((s) => s.selectedNodeId);
   const selectedConductorId = useEditorStore((s) => s.selectedConductorId);
   const selectedCadFaceIds = useEditorStore((s) => s.selectedCadFaceIds);
@@ -72,17 +72,19 @@ export function PropertiesPanel() {
           {showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <FailureModePanel
+                open={failureModalOpen}
+                onOpenChange={setFailureModalOpen}
                 projectId={projectId}
                 modelId={modelId}
-                onAnalysisComplete={setRiskMatrixData}
+                onAnalysisComplete={(id) => { setFailureAnalysisId(id); setFailureModalOpen(false); }}
               />
             </div>
           )}
 
           {/* Risk Matrix results */}
-          {riskMatrixData && (
+          {failureAnalysisId && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
-              <RiskMatrix data={riskMatrixData} />
+              <RiskMatrix analysisId={failureAnalysisId} projectId={projectId} modelId={modelId} />
             </div>
           )}
         </div>
