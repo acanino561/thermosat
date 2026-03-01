@@ -67,7 +67,7 @@ function ProgressBar({ active }: { active: boolean }) {
   const pct = Math.round(progress);
 
   return (
-    <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'var(--tc-text-secondary)' }}>
+    <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'rgba(255,255,255,0.72)' }}>
       {'  ['}
       <span style={{ color: 'var(--tc-accent)' }}>{bar}</span>
       {'] '}
@@ -103,7 +103,7 @@ function TerminalLine({ line }: { line: Line }) {
     const rest = statusText ? line.text.slice(0, -statusText.length) : line.text;
 
     return (
-      <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'var(--tc-text-secondary)' }}>
+      <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'rgba(255,255,255,0.72)' }}>
         {rest}
         {statusText && (
           <span style={{ color: statusText === 'OK' ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
@@ -116,7 +116,7 @@ function TerminalLine({ line }: { line: Line }) {
 
   if (line.type === 'margin') {
     return (
-      <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'var(--tc-text-secondary)' }}>
+      <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'rgba(255,255,255,0.72)' }}>
         {line.text}
       </div>
     );
@@ -129,7 +129,7 @@ function TerminalLine({ line }: { line: Line }) {
   if (leadingMatch) {
     const [, ws, symbol, rest] = leadingMatch;
     return (
-      <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'var(--tc-text-secondary)' }}>
+      <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'rgba(255,255,255,0.72)' }}>
         {ws}
         <span style={{ color: 'var(--tc-accent)' }}>{symbol}</span>
         {rest}
@@ -138,7 +138,7 @@ function TerminalLine({ line }: { line: Line }) {
   }
 
   return (
-    <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'var(--tc-text-secondary)' }}>
+    <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6, color: 'rgba(255,255,255,0.72)' }}>
       {text}
     </div>
   );
@@ -243,7 +243,7 @@ export function CliTerminalSection() {
 
             <p
               className="mt-6 text-sm leading-relaxed font-sans max-w-md"
-              style={{ color: 'var(--tc-text-secondary)' }}
+              style={{ color: 'rgba(255,255,255,0.72)' }}
             >
               Define your orbit. Define your model. Verixos handles the physics.
             </p>
@@ -307,7 +307,7 @@ export function CliTerminalSection() {
                 {typedPrompt.length > 0 && (
                   <div className="whitespace-pre font-mono text-[13px]" style={{ lineHeight: 1.6 }}>
                     <span style={{ color: 'var(--tc-accent)' }}>$</span>
-                    <span style={{ color: 'var(--tc-text-secondary)' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.72)' }}>
                       {typedPrompt.slice(1)}
                     </span>
                     {!showCursor && typedPrompt.length < PROMPT.length && (
