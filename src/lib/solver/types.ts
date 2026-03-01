@@ -103,6 +103,14 @@ export interface OrbitalHeatProfile {
 
 // ── Thermal Network ─────────────────────────────────────────────────────────
 
+/** Per-node conductor adjacency entry */
+export interface NodeConductorEntry {
+  conductor: SolverConductor;
+  otherNodeId: string;
+  /** +1 if this node is the "to" node (heat flows in), -1 if "from" (heat flows out) */
+  sign: 1 | -1;
+}
+
 export interface ThermalNetwork {
   nodes: Map<string, SolverNode>;
   conductors: SolverConductor[];
@@ -114,6 +122,10 @@ export interface ThermalNetwork {
   diffusionNodeIds: string[];
   arithmeticNodeIds: string[];
   boundaryNodeIds: string[];
+  /** Adjacency list: nodeId → conductors connected to that node */
+  nodeConductors: Map<string, NodeConductorEntry[]>;
+  /** Pre-indexed heat loads per node: nodeId → heat loads on that node */
+  nodeHeatLoads: Map<string, SolverHeatLoad[]>;
 }
 
 // ── Simulation Config ───────────────────────────────────────────────────────

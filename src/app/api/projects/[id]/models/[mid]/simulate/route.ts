@@ -180,31 +180,43 @@ export async function POST(
       // Compute energy balance
       const energyBalance = computeEnergyBalance(network, result);
 
-      // Store results
-      for (const nodeResult of result.nodeResults) {
-        await db.insert(simulationResults).values({
-          runId: run.id,
-          nodeId: nodeResult.nodeId,
-          timeValues: {
-            times: nodeResult.times,
-            temperatures: nodeResult.temperatures,
-          },
-          conductorFlows: result.conductorFlows
-            .filter((cf) => {
-              const conductor = network.conductors.find(
-                (c) => c.id === cf.conductorId,
-              );
-              return (
-                conductor?.nodeFromId === nodeResult.nodeId ||
-                conductor?.nodeToId === nodeResult.nodeId
-              );
-            })
-            .map((cf) => ({
-              conductorId: cf.conductorId,
-              times: cf.times,
-              flows: cf.flows,
-            })),
-        });
+      // Store results — batched inserts for performance
+      const BATCH_SIZE = 100;
+      const resultValues = result.nodeResults.map((nodeResult) => ({
+        runId: run.id,
+        nodeId: nodeResult.nodeId,
+        timeValues: {
+          times: nodeResult.times,
+          temperatures: nodeResult.temperatures,
+        },
+        conductorFlows: result.conductorFlows
+          .filter((cf) => {
+            const conductor = network.conductors.find(
+              (c) => c.id === cf.conductorId,
+            );
+            return (
+              conductor?.nodeFromId === nodeResult.nodeId ||
+              conductor?.nodeToId === nodeResult.nodeId
+            );
+          })
+          .map((cf) => ({
+            conductorId: cf.conductorId,
+            times: cf.times,
+            flows: cf.flows,
+          })),
+      }));
+
+      // Insert in batches
+      for (let i = 0; i < resultValues.length; i += BATCH_SIZE) {
+        const batch = resultValues.slice(i, i + BATCH_SIZE);
+        await db.insert(simulationResults).values(batch);
+
+        // Update progress between 80-95% during DB writes
+        const writeProgress = 80 + Math.floor((i / resultValues.length) * 15);
+        await db
+          .update(simulationRuns)
+          .set({ progress: writeProgress })
+          .where(eq(simulationRuns.id, run.id));
       }
 
       // Update run status — completed

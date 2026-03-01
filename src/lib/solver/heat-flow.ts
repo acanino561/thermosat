@@ -121,8 +121,10 @@ export function computeNodeHeatLoad(
 ): number {
   let totalQ = 0;
 
-  for (const load of heatLoads) {
-    if (load.nodeId !== nodeId) continue;
+  // Use pre-indexed heat loads when available, otherwise fall back to full scan
+  const nodeLoads = network.nodeHeatLoads?.get(nodeId) ?? heatLoads.filter(l => l.nodeId === nodeId);
+
+  for (const load of nodeLoads) {
 
     switch (load.loadType) {
       case 'constant':
@@ -249,7 +251,7 @@ function computeOrbitalHeatLoad(
 
 /**
  * Compute the total heat flow into a node from all conductors.
- * Returns the sum of all conductor contributions.
+ * Uses pre-built adjacency list for O(degree) instead of O(C).
  */
 export function computeTotalConductorHeatFlow(
   nodeId: string,
@@ -258,18 +260,17 @@ export function computeTotalConductorHeatFlow(
 ): number {
   let totalQ = 0;
 
-  for (const conductor of network.conductors) {
+  const entries = network.nodeConductors.get(nodeId);
+  if (!entries) return 0;
+
+  for (const entry of entries) {
+    const { conductor, sign } = entry;
     const tFrom = temperatures.get(conductor.nodeFromId);
     const tTo = temperatures.get(conductor.nodeToId);
     if (tFrom === undefined || tTo === undefined) continue;
 
-    if (conductor.nodeFromId === nodeId) {
-      // Heat flowing OUT of this node
-      totalQ -= computeConductorFlow(conductor, tFrom, tTo);
-    } else if (conductor.nodeToId === nodeId) {
-      // Heat flowing INTO this node
-      totalQ += computeConductorFlow(conductor, tFrom, tTo);
-    }
+    // sign is +1 for "to" node (heat flows in), -1 for "from" node (heat flows out)
+    totalQ += sign * computeConductorFlow(conductor, tFrom, tTo);
   }
 
   return totalQ;
@@ -329,12 +330,10 @@ export function solveArithmeticNodes(
       let sumRadNumerator = 0;
       let sumRadDenominator = 0;
 
-      for (const conductor of network.conductors) {
-        const isFrom = conductor.nodeFromId === nodeId;
-        const isTo = conductor.nodeToId === nodeId;
-        if (!isFrom && !isTo) continue;
-
-        const otherNodeId = isFrom ? conductor.nodeToId : conductor.nodeFromId;
+      const entries = network.nodeConductors?.get(nodeId) ?? [];
+      for (const entry of entries) {
+        const conductor = entry.conductor;
+        const otherNodeId = entry.otherNodeId;
         const tOther = temperatures.get(otherNodeId);
         if (tOther === undefined) continue;
 
