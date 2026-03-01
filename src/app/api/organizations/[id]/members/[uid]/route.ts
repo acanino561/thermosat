@@ -62,12 +62,23 @@ export async function PUT(
       .where(and(eq(orgMembers.orgId, id), eq(orgMembers.userId, uid)));
     if (!target) return notFoundResponse('Member');
 
-    // Cannot change own role (prevent owner from de-promoting themselves)
-    if (uid === user.id) {
-      return NextResponse.json(
-        { error: 'Cannot change your own role' },
-        { status: 400 },
-      );
+    // Cannot modify an owner unless you are also an owner
+    if (target.role === 'owner' && caller.role !== 'owner') {
+      return NextResponse.json({ error: 'Cannot modify the role of an org owner' }, { status: 403 });
+    }
+
+    // If an owner is changing their own role away from owner, ensure at least one other owner remains
+    if (uid === user.id && caller.role === 'owner' && parsed.data.role !== 'owner') {
+      const owners = await db
+        .select()
+        .from(orgMembers)
+        .where(and(eq(orgMembers.orgId, id), eq(orgMembers.role, 'owner')));
+      if (owners.length <= 1) {
+        return NextResponse.json(
+          { error: 'Cannot remove the last owner of an organization' },
+          { status: 403 },
+        );
+      }
     }
 
     const [updated] = await db
