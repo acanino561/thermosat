@@ -7,9 +7,14 @@ import { NodeProperties } from './node-properties';
 import { ConductorProperties } from './conductor-properties';
 import { ModelOverview } from './model-overview';
 import { SurfaceProperties } from './surface-properties';
+import { useState } from 'react';
 import { WhatIfPanel } from '@/components/results/what-if-panel';
+import { FailureModePanel } from '@/components/results/failure-mode-panel';
+import { RiskMatrix } from '@/components/results/risk-matrix';
+import type { RiskMatrixData } from '@/components/results/failure-mode-panel';
 
 export function PropertiesPanel() {
+  const [riskMatrixData, setRiskMatrixData] = useState<RiskMatrixData | null>(null);
   const selectedNodeId = useEditorStore((s) => s.selectedNodeId);
   const selectedConductorId = useEditorStore((s) => s.selectedConductorId);
   const selectedCadFaceIds = useEditorStore((s) => s.selectedCadFaceIds);
@@ -60,6 +65,24 @@ export function PropertiesPanel() {
                 modelId={modelId}
                 runId={simulationResults.runId}
               />
+            </div>
+          )}
+
+          {/* Failure Mode Analysis panel */}
+          {showResultsOverlay && simulationResults && projectId && modelId && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <FailureModePanel
+                projectId={projectId}
+                modelId={modelId}
+                onAnalysisComplete={setRiskMatrixData}
+              />
+            </div>
+          )}
+
+          {/* Risk Matrix results */}
+          {riskMatrixData && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <RiskMatrix data={riskMatrixData} />
             </div>
           )}
         </div>
