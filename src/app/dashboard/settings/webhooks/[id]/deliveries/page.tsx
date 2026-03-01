@@ -1,128 +1,111 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft } from 'lucide-react';
 
 interface Delivery {
   id: string;
+  timestamp: string;
   eventType: string;
-  status: string;
-  attempts: number;
+  status: 'success' | 'failed' | 'pending';
   httpStatus: number | null;
-  responseBody: string | null;
-  createdAt: string;
-  lastAttemptAt: string | null;
+  attempts: number;
+  response: string | null;
 }
 
-export default function DeliveriesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+const STATUS_STYLES: Record<string, string> = {
+  success: 'bg-green-500/20 text-green-400 border-green-500/30',
+  failed: 'bg-red-500/20 text-red-400 border-red-500/30',
+  pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+};
+
+export default function DeliveriesPage() {
+  const params = useParams<{ id: string }>();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+
+  const fetchDeliveries = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/webhooks/${params.id}/deliveries`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setDeliveries(json.data ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, [params.id]);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(`/api/webhooks/${id}/deliveries?page=${page}&limit=20`);
-        if (res.ok) {
-          const data = await res.json();
-          setDeliveries(data.deliveries);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [id, page]);
-
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'success':
-        return 'default';
-      case 'failed':
-        return 'destructive';
-      default:
-        return 'secondary';
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+    fetchDeliveries();
+  }, [fetchDeliveries]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <Link href="/dashboard/settings/webhooks">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
           </Button>
         </Link>
         <div>
-          <h2 className="text-2xl font-bold">Delivery Log</h2>
-          <p className="text-muted-foreground">Recent webhook deliveries</p>
+          <h2 className="text-2xl font-bold tracking-tight">Delivery Log</h2>
+          <p className="text-muted-foreground">
+            Recent webhook delivery attempts.
+          </p>
         </div>
       </div>
 
-      {deliveries.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            No deliveries yet.
-          </CardContent>
-        </Card>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : deliveries.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No deliveries yet.</p>
       ) : (
-        <div className="space-y-2">
-          {deliveries.map((d) => (
-            <Card key={d.id}>
-              <CardContent className="py-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Badge variant={statusColor(d.status)}>{d.status}</Badge>
-                    <span className="text-sm font-medium">{d.eventType}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    {d.httpStatus !== null && <span>HTTP {d.httpStatus}</span>}
-                    <span>Attempts: {d.attempts}</span>
-                    <span>{new Date(d.createdAt).toLocaleString()}</span>
-                  </div>
-                </div>
-                {d.responseBody && (
-                  <pre className="mt-2 text-xs text-muted-foreground bg-muted p-2 rounded max-h-20 overflow-auto">
-                    {d.responseBody}
-                  </pre>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+        <div className="rounded-md border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="p-3 text-left font-medium">Timestamp</th>
+                <th className="p-3 text-left font-medium">Event Type</th>
+                <th className="p-3 text-left font-medium">Status</th>
+                <th className="p-3 text-left font-medium">HTTP Status</th>
+                <th className="p-3 text-left font-medium">Attempts</th>
+                <th className="p-3 text-left font-medium">Response</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deliveries.map((d) => (
+                <tr key={d.id} className="border-b last:border-0">
+                  <td className="p-3 text-muted-foreground">
+                    {new Date(d.timestamp).toLocaleString()}
+                  </td>
+                  <td className="p-3">
+                    <Badge variant="secondary" className="text-xs">
+                      {d.eventType}
+                    </Badge>
+                  </td>
+                  <td className="p-3">
+                    <Badge className={STATUS_STYLES[d.status] ?? ''}>
+                      {d.status}
+                    </Badge>
+                  </td>
+                  <td className="p-3 font-mono text-xs">
+                    {d.httpStatus ?? '—'}
+                  </td>
+                  <td className="p-3">{d.attempts}</td>
+                  <td className="p-3 text-xs text-muted-foreground max-w-[200px] truncate">
+                    {d.response ? d.response.slice(0, 100) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-
-      <div className="flex justify-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={deliveries.length < 20}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next
-        </Button>
-      </div>
     </div>
   );
 }
