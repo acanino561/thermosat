@@ -9,6 +9,7 @@ import { TelemetryStrip } from '@/components/landing/telemetry-strip';
 import { EnergyBalanceSection } from '@/components/landing/energy-balance-section';
 import { FeaturesSection } from '@/components/landing/features-section';
 import { CapabilitiesSection } from '@/components/landing/capabilities-section';
+import { CliTerminalSection } from '@/components/landing/cli-terminal-section';
 import { SpecComparison } from '@/components/landing/spec-comparison';
 import { VvBadgeSection } from '@/components/landing/vv-badge-section';
 import { DemoVideoSection } from '@/components/landing/demo-video-section';
@@ -29,6 +30,7 @@ export default function LandingPage() {
         <EnergyBalanceSection />
         <FeaturesSection />
         <CapabilitiesSection />
+        <CliTerminalSection />
         <SpecComparison />
         <VvBadgeSection />
         <DemoVideoSection />
