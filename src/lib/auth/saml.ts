@@ -6,40 +6,6 @@ export type SsoConfig = InferSelectModel<typeof ssoConfigs>;
 
 const BASE_URL = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
 
-// In-memory replay cache. Acceptable for Phase 3 (Vercel serverless = short-lived instances).
-// TODO: For production multi-instance deployments, replace with a persistent cache (Redis/DB).
-const requestCache = new Map<string, number>(); // requestId → expiry timestamp
-const cacheProvider = {
-  saveAsync: async (id: string, expiresAt: Date | string) => {
-    const exp = typeof expiresAt === 'string' ? new Date(expiresAt).getTime() : expiresAt.getTime();
-    requestCache.set(id, exp);
-    return null;
-  },
-  fetchAsync: async (id: string) => {
-    const exp = requestCache.get(id);
-    if (!exp) return null;
-    if (Date.now() > exp) {
-      requestCache.delete(id);
-      return null;
-    }
-    requestCache.delete(id); // consume it — one-time use
-    return id;
-  },
-  removeAsync: async (id: string) => {
-    requestCache.delete(id);
-    return null;
-  },
-  getAsync: async (id: string) => {
-    const exp = requestCache.get(id);
-    if (!exp) return null;
-    if (Date.now() > exp) {
-      requestCache.delete(id);
-      return null;
-    }
-    return id;
-  },
-};
-
 export function getSamlInstance(ssoConfig: SsoConfig, orgSlug: string): SAML {
   return new SAML({
     callbackUrl: `${BASE_URL}/api/saml/${orgSlug}/acs`,
@@ -49,7 +15,6 @@ export function getSamlInstance(ssoConfig: SsoConfig, orgSlug: string): SAML {
     wantAssertionsSigned: true,
     wantAuthnResponseSigned: true,
     requestIdExpirationPeriodMs: 600000, // 10 minutes
-    cacheProvider,
   });
 }
 
