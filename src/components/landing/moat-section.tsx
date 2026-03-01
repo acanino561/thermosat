@@ -231,7 +231,7 @@ export function MoatSection() {
 
   return (
     <section
-      className="relative py-24 lg:py-32 px-6 lg:px-10 overflow-hidden"
+      className="relative py-24 lg:py-32 px-6 lg:px-20 xl:px-28 overflow-hidden"
       style={{ borderTop: '1px solid var(--tc-border)' }}
     >
       <div className="absolute inset-0 eng-grid pointer-events-none opacity-10" aria-hidden />

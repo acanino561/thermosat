@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { motion, useScroll, useTransform, useInView, useMotionValue, useAnimationFrame, MotionValue } from 'framer-motion';
+import { motion, useScroll, useTransform, useInView, MotionValue } from 'framer-motion';
 
 /* ── Satellite silhouette ────────────────────────────────────── */
 function SatSilhouette() {
@@ -23,35 +23,22 @@ function SatSilhouette() {
 
 /* ── Orbital arc background ──────────────────────────────────── */
 function OrbitalArcBg({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
-  const autoAngle = useMotionValue(Math.PI * 0.6);
-
-  useAnimationFrame((_t, delta) => {
-    autoAngle.set(autoAngle.get() - delta * (Math.PI * 2) / 20000);
+  // Purely scroll-driven: satellite sweeps left → across the sun → right as section scrolls
+  // angle: π (left) → -0.2 (past the sun on the right) over the full scroll range
+  const angle = useTransform(scrollProgress, (p: number) => {
+    const clamped = Math.min(Math.max(p, 0), 1);
+    return Math.PI * 1.05 - clamped * Math.PI * 1.25; // ~3.3 → -0.2 rad
   });
 
-  const satX = useTransform([autoAngle, scrollProgress] as const, ([a, p]) => {
-    const angle = (a as number) + (p as number) * (Math.PI / 4);
-    return `${42 + 46 * Math.cos(angle)}%`;
-  });
-  const satY = useTransform([autoAngle, scrollProgress] as const, ([a, p]) => {
-    const angle = (a as number) + (p as number) * (Math.PI / 4);
-    return `${70 - 58 * Math.sin(angle)}%`;
-  });
-  const satRotate = useTransform([autoAngle, scrollProgress] as const, ([a, p]) => {
-    const angle = (a as number) + (p as number) * (Math.PI / 4);
-    return -(Math.atan2(58 * Math.cos(angle), 46 * Math.sin(angle)) * 180 / Math.PI);
-  });
-  // Solar glow — strongest when satellite is near the sun (right side, cos(angle) large)
-  const glowOp = useTransform([autoAngle, scrollProgress] as const, ([a, p]) => {
-    const angle = (a as number) + (p as number) * (Math.PI / 4);
-    return Math.max(0, Math.cos(angle)) * 0.6;
-  });
-  // Satellite opacity — dimmed on back arc (upper half, behind sun), full on front arc
-  const satOpacity = useTransform([autoAngle, scrollProgress] as const, ([a, p]) => {
-    const angle = (a as number) + (p as number) * (Math.PI / 4);
-    // sin(angle) > 0 means upper screen half = back arc = behind sun
-    return Math.sin(angle) > 0 ? 0.38 : 0.85;
-  });
+  const satX = useTransform(angle, (a: number) => `${42 + 50 * Math.cos(a)}%`);
+  const satY = useTransform(angle, (a: number) => `${70 - 58 * Math.sin(a)}%`);
+  const satRotate = useTransform(angle, (a: number) =>
+    -(Math.atan2(58 * Math.cos(a), 46 * Math.sin(a)) * 180 / Math.PI),
+  );
+  // Dimmed when on back arc (upper screen, behind sun), full when on front arc
+  const satOpacity = useTransform(angle, (a: number) => Math.sin(a) > 0.15 ? 0.35 : 0.85);
+  // Glow pulses as satellite nears the sun (angle ≈ 0 = rightmost / sun side)
+  const glowOp = useTransform(angle, (a: number) => Math.max(0, Math.cos(a)) * 0.6);
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden style={{ zIndex: 1 }}>
