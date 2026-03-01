@@ -6,28 +6,28 @@ import { motion, useInView } from 'framer-motion';
 const items = [
   {
     num: '01',
-    title: 'MODEL LINEAGE',
-    body: 'Every simulation run, what-if study, and design review comment is stored with the model that produced it. Your current thermal design traces back to PDR baseline. That provenance lives in your mission documents. Migrating means losing the paper trail — and re-validating everything from scratch.',
+    title: 'COMPLETE MISSION PROVENANCE',
+    body: 'Every simulation run, what-if study, and design review comment is stored with the model that produced it. Your current thermal design traces back to PDR baseline — searchable, version-controlled, and attributable. The full engineering record, not just the latest export.',
   },
   {
     num: '02',
-    title: 'CITED IN DELIVERABLES',
-    body: 'Once a CDR says "thermal analysis per Verixos v2.x, benchmarks B1–B10 pass", the next review board expects continuity. Switching tools requires re-running all analyses and re-establishing benchmark compliance — a multi-week effort no programme manager approves mid-mission.',
+    title: 'DELIVERABLE-READY OUTPUT',
+    body: 'Export thermal analysis citations for CDR packages with benchmark compliance reports auto-generated. Verixos version, benchmark results B1–B10, and model hash are included in every report — so your review board gets everything they need without extra work.',
   },
   {
     num: '03',
-    title: 'PIPELINE INTEGRATION',
-    body: 'When verixos check --thermal-margins is green in your CI pipeline, it becomes infrastructure, not a tool. The thermal margin badge is expected on every commit — by your PM, your systems engineer, and your customer. Removing it requires a pipeline change and re-approval.',
+    title: 'NATIVE CI/CD INTEGRATION',
+    body: 'Run thermal margin checks on every commit. Connect Verixos to GitHub Actions, GitLab CI, or Jenkins — get a pass/fail badge before hardware is committed. Thermal analysis moves at the speed of your software pipeline, not your review calendar.',
   },
   {
     num: '04',
-    title: 'ORG KNOWLEDGE BASE',
-    body: 'Custom materials, flight-heritage optical properties, mission bus templates, and node libraries are shared across your organisation. Junior engineers inherit senior knowledge automatically. Leaving means rebuilding years of institutional knowledge from scratch.',
+    title: 'SHARED ENGINEERING KNOWLEDGE',
+    body: 'Custom materials, flight-heritage optical properties, mission bus templates, and node libraries are shared across your organisation. Junior engineers work from the same validated baselines as senior staff — institutional knowledge encoded into the platform, not locked in someone\'s head.',
   },
   {
     num: '05',
-    title: 'THE ACADEMIC FLYWHEEL',
-    body: 'Students who learn Verixos today join Rocket Lab, ISRO, and NASA tomorrow. They advocate for it from the inside. This is how MATLAB won a generation of engineers. The academic tier exists for exactly this reason — and the flywheel starts compounding now.',
+    title: 'BUILT FOR THE NEXT GENERATION',
+    body: 'The academic tier exists because the engineers who learn tools at university carry them into industry. Free access for students and researchers means Verixos is taught alongside the physics it simulates — the same way a generation of engineers learned MATLAB.',
   },
 ];
 
@@ -61,10 +61,10 @@ export function MoatSection() {
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <h2 className="font-mono font-bold tracking-tight leading-[0.95]">
               <span className="block text-3xl lg:text-4xl" style={{ color: 'var(--tc-text)' }}>
-                Why teams
+                Built into
               </span>
               <span className="block text-3xl lg:text-4xl" style={{ color: 'var(--tc-accent)' }}>
-                don&apos;t leave
+                your programme
               </span>
             </h2>
 
@@ -72,8 +72,8 @@ export function MoatSection() {
               className="lg:max-w-md text-sm leading-relaxed font-sans"
               style={{ color: 'var(--tc-text-secondary)' }}
             >
-              The value of Verixos compounds over time. Every month you use it, switching costs grow
-              — not through lock-in, but through accumulated trust, provenance, and institutional knowledge.
+              Verixos becomes part of your engineering infrastructure — your models, your deliverables,
+              your pipeline. The longer you run it, the more context it holds.
             </p>
           </div>
 
