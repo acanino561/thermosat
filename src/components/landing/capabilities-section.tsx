@@ -36,9 +36,10 @@ const capabilities = [
       { key: 'USERS', value: 'Unlimited concurrent' },
       { key: 'VERSIONING', value: 'Git-like model history' },
       { key: 'REVIEW', value: 'Comments, approvals, diffs' },
+      { key: 'ROLLBACK', value: 'One-click restore to any state' },
       { key: 'AUTH', value: 'SSO / SAML / OAuth 2.0' },
     ],
-    desc: 'No more emailing .sinda files. Your whole team works on the same model, with full version history and access control.',
+    desc: 'No more emailing .sinda files. Your whole team edits the same model with full version history, diffs, and rollback. Every CDR traces back to the exact model state — forever.',
   },
   {
     id: 'api',
@@ -50,7 +51,7 @@ const capabilities = [
       { key: 'SDK', value: 'Python, TypeScript' },
       { key: 'WEBHOOKS', value: 'Simulation events, results' },
     ],
-    desc: 'Run thermal checks in your build pipeline. Automate parametric sweeps. Integrate thermal data into your systems engineering workflow.',
+    desc: 'Trigger thermal margin checks in your CI pipeline — fail the build if margins are breached. Automate parametric sweeps. Connect Verixos to your systems engineering workflow via REST API and Python SDK.',
   },
   {
     id: 'materials',
@@ -113,8 +114,7 @@ export function CapabilitiesSection() {
             className="max-w-md text-sm leading-relaxed font-sans lg:text-right"
             style={{ color: 'var(--tc-text-secondary)' }}
           >
-            Purpose-built for spacecraft thermal engineers. Every feature designed around 
-            real engineering workflows, not adapted from generic CAE tools.
+            The only cloud-native thermal solver with git-like model history, automated orbital environments, and native CI/CD integration. No desktop installs. No emailed .sinda files. No black-box licensing.
           </p>
         </div>
 

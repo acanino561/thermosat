@@ -2,13 +2,84 @@
 
 import dynamic from 'next/dynamic';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 
 const SatelliteScene = dynamic(
   () => import('@/components/three/satellite-scene').then((mod) => mod.SatelliteScene),
   { ssr: false },
 );
+
+interface TelemetryPoint {
+  label: string;
+  tempC: number;
+  status: 'WARN' | 'NOM';
+  x: string;
+  y: string;
+  phase: number;
+  amplitude: number;
+}
+
+const TELEMETRY_POINTS: TelemetryPoint[] = [
+  { label: 'SOLAR PANEL +Y', tempC:  62, status: 'NOM', x: 'right-[5%]',  y: 'top-[22%]', phase: 0,    amplitude: 80 },
+  { label: 'BUS CORE',       tempC:  21, status: 'NOM', x: 'right-[8%]',  y: 'top-[42%]', phase: 0.5,  amplitude: 15 },
+  { label: 'RADIATOR -Z',    tempC: -78, status: 'NOM', x: 'right-[3%]',  y: 'top-[58%]', phase: 1.0,  amplitude: 30 },
+  { label: 'ANTENNA FEED',   tempC: -12, status: 'NOM', x: 'right-[12%]', y: 'top-[74%]', phase: 0.8,  amplitude: 20 },
+];
+
+function AnimatedTelemetry({ isVisible }: { isVisible: boolean }) {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!isVisible) return;
+    const id = setInterval(() => setTick((t) => t + 1), 80);
+    return () => clearInterval(id);
+  }, [isVisible]);
+
+  const t = (tick * 80 / 10000) * 2 * Math.PI;
+
+  return (
+    <div className="absolute inset-0 z-20 pointer-events-none hidden lg:block" aria-hidden>
+      {TELEMETRY_POINTS.map((pt, i) => {
+        const temp = pt.tempC + pt.amplitude * Math.sin(t + pt.phase);
+        const isWarn = temp > 100 || temp < -100;
+        const sign = temp >= 0 ? '+' : '';
+        const display = `${sign}${temp.toFixed(1)}°C`;
+
+        return (
+          <motion.div
+            key={pt.label}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: isVisible ? 1 : 0, x: isVisible ? 0 : 20 }}
+            transition={{ delay: 1.8 + i * 0.15, duration: 0.4 }}
+            className={`absolute ${pt.x} ${pt.y}`}
+          >
+            <div className="font-mono text-[10px] tracking-[0.1em] flex items-baseline gap-3">
+              <span style={{ color: 'var(--tc-text-muted)' }}>{pt.label}</span>
+              <span
+                className="text-sm font-semibold tabular-nums"
+                style={{
+                  color: isWarn ? 'var(--tc-accent)' : 'var(--tc-text)',
+                  transition: 'color 0.3s ease',
+                }}
+              >
+                {display}
+              </span>
+            </div>
+            <div
+              className="h-px mt-1"
+              style={{
+                background: `linear-gradient(90deg, rgba(var(--tc-accent-rgb), ${isWarn ? 0.4 : 0.15}), transparent)`,
+                width: '80px',
+                transition: 'opacity 0.3s ease',
+              }}
+            />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
 
 function StatusBar() {
   return (
@@ -36,6 +107,9 @@ function StatusBar() {
 }
 
 export function HeroSection() {
+  const [shown, setShown] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShown(true), 1500); return () => clearTimeout(t); }, []);
+
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -79,6 +153,9 @@ export function HeroSection() {
           }}
         />
       </motion.div>
+
+      {/* Animated telemetry overlays */}
+      <AnimatedTelemetry isVisible={shown} />
 
       {/* Main content */}
       <motion.div
