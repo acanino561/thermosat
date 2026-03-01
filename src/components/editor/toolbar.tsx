@@ -26,6 +26,8 @@ import {
   Clock,
   Check,
   AlertCircle,
+  MessageSquare,
+  Share2,
 } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { AddNodeDialog } from './add-node-dialog';
@@ -35,6 +37,9 @@ import { ImportCadButton } from './import-cad-button';
 import { HistoryPanel } from './history-panel';
 import { VersionHistory } from './version-history';
 import { SimulationConfigDialog } from './simulation-config-dialog';
+import { CommentsPanel } from '@/components/collab/comments-panel';
+import { ShareDialog } from '@/components/collab/share-dialog';
+import { ReviewStatusBar } from '@/components/collab/review-status-bar';
 import Link from 'next/link';
 
 interface ToolbarProps {
@@ -61,10 +66,13 @@ export function Toolbar({ projectId, role }: ToolbarProps) {
     cleanup,
   } = useEditorStore();
 
+  const modelId = useEditorStore((s) => s.modelId);
+
   const [isSaving, setIsSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showSimConfig, setShowSimConfig] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -284,6 +292,42 @@ export function Toolbar({ projectId, role }: ToolbarProps) {
           </TooltipContent>
         </Tooltip>
 
+        <Separator orientation="vertical" className="h-6 mx-2" />
+
+        {/* Collab: Review Status */}
+        {modelId && <ReviewStatusBar modelId={modelId} />}
+
+        {/* Collab: Share */}
+        {modelId && (
+          <ShareDialog
+            modelId={modelId}
+            trigger={
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share</TooltipContent>
+              </Tooltip>
+            }
+          />
+        )}
+
+        {/* Collab: Comments toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={showComments ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={() => setShowComments(!showComments)}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Comments</TooltipContent>
+        </Tooltip>
+
         {/* Spacer */}
         <div className="flex-1" />
 
@@ -324,6 +368,13 @@ export function Toolbar({ projectId, role }: ToolbarProps) {
         open={showSimConfig}
         onOpenChange={setShowSimConfig}
       />
+
+      {/* Comments sidebar */}
+      {showComments && modelId && (
+        <div className="fixed right-0 top-0 z-40 h-screen">
+          <CommentsPanel projectId={projectId} modelId={modelId} />
+        </div>
+      )}
     </>
   );
 }
