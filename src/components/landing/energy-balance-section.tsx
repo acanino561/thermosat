@@ -1,7 +1,80 @@
 'use client';
 
 import { useRef } from 'react';
-import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import { motion, useScroll, useTransform, useInView, MotionValue } from 'framer-motion';
+
+/* ── Satellite silhouette ────────────────────────────────────── */
+function SatSilhouette() {
+  return (
+    <svg width="52" height="30" viewBox="0 0 52 30" fill="none" aria-hidden>
+      <rect x="0" y="12" width="14" height="6" rx="1" fill="currentColor" />
+      <line x1="4.5" y1="12" x2="4.5" y2="18" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" />
+      <line x1="9" y1="12" x2="9" y2="18" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" />
+      <rect x="15" y="5" width="22" height="20" rx="2" fill="currentColor" />
+      <rect x="18" y="9" width="16" height="12" rx="1" fill="rgba(0,0,0,0.2)" />
+      <rect x="38" y="12" width="14" height="6" rx="1" fill="currentColor" />
+      <line x1="42.5" y1="12" x2="42.5" y2="18" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" />
+      <line x1="47" y1="12" x2="47" y2="18" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" />
+      <line x1="26" y1="5" x2="26" y2="1" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="26" cy="0.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+/* ── Orbital arc background ──────────────────────────────────── */
+function OrbitalArcBg({ scrollProgress }: { scrollProgress: MotionValue<number> }) {
+  const satX = useTransform(scrollProgress, (p: number) => {
+    const angle = Math.PI * (1 - Math.min(Math.max(p, 0), 1));
+    return `${42 + 46 * Math.cos(angle)}%`;
+  });
+  const satY = useTransform(scrollProgress, (p: number) => {
+    const angle = Math.PI * (1 - Math.min(Math.max(p, 0), 1));
+    return `${70 - 58 * Math.sin(angle)}%`;
+  });
+  const satRotate = useTransform(scrollProgress, [0, 0.25, 0.5, 0.75, 1], [40, 15, -5, -22, -38]);
+  const glowOp = useTransform(scrollProgress, [0, 0.3, 0.55, 0.8, 1], [0, 0.35, 0.65, 0.35, 0.1]);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden style={{ zIndex: 1 }}>
+      {/* Dashed orbital path */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        viewBox="0 0 1400 700" preserveAspectRatio="xMidYMid slice">
+        <ellipse cx="1050" cy="490" rx="980" ry="350"
+          fill="none" stroke="rgba(255,150,40,0.07)" strokeWidth="1.5" strokeDasharray="5 10" />
+      </svg>
+
+      {/* Sun bloom — outer */}
+      <div style={{
+        position: 'absolute', right: '10%', top: '42%',
+        transform: 'translate(50%, -50%)', width: 340, height: 340, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(255,210,80,0.15) 0%, rgba(255,130,30,0.08) 38%, rgba(255,50,0,0.03) 65%, transparent 80%)',
+        filter: 'blur(6px)',
+      }} />
+      {/* Sun core */}
+      <div style={{
+        position: 'absolute', right: '10%', top: '42%',
+        transform: 'translate(50%, -50%)', width: 44, height: 44, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(255,235,130,0.55) 0%, rgba(255,180,60,0.3) 55%, transparent 100%)',
+        filter: 'blur(1px)',
+      }} />
+
+      {/* Satellite */}
+      <motion.div style={{
+        position: 'absolute', left: satX, top: satY,
+        rotate: satRotate, translateX: '-50%', translateY: '-50%',
+        color: 'rgba(200,215,225,0.8)',
+      }}>
+        <motion.div style={{
+          position: 'absolute', inset: -14, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,215,80,0.5) 0%, transparent 70%)',
+          opacity: glowOp, filter: 'blur(2px)',
+        }} />
+        <SatSilhouette />
+      </motion.div>
+    </div>
+  );
+}
+
 
 const energyTerms = [
   {
@@ -136,6 +209,9 @@ export function EnergyBalanceSection() {
         className="absolute inset-0 eng-grid pointer-events-none opacity-50"
         aria-hidden
       />
+
+      {/* Scroll-linked orbital arc + satellite + sun bloom */}
+      <OrbitalArcBg scrollProgress={scrollYProgress} />
 
       <div className="relative z-10 max-w-[1400px] mx-auto">
         {/* Section header — left-aligned */}
