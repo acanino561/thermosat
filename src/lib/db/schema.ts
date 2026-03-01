@@ -594,6 +594,65 @@ export const apiKeys = pgTable(
   }),
 );
 
+// ── Failure Analysis ───────────────────────────────────────────────────────
+
+export const failureTypeEnum = pgEnum('failure_type', [
+  'heater_failure',
+  'mli_degradation',
+  'coating_degradation_eol',
+  'attitude_loss_tumble',
+  'power_budget_reduction',
+  'conductor_failure',
+  'component_power_spike',
+]);
+
+export const analysisStatusEnum = pgEnum('analysis_status', [
+  'pending',
+  'running',
+  'completed',
+  'failed',
+]);
+
+export const failureAnalyses = pgTable(
+  'failure_analyses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    baseRunId: uuid('base_run_id').references(() => simulationRuns.id, {
+      onDelete: 'set null',
+    }),
+    status: analysisStatusEnum('status').default('pending').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date' }),
+  },
+  (table) => ({
+    modelIdIdx: index('failure_analyses_model_id_idx').on(table.modelId),
+  }),
+);
+
+export const failureCases = pgTable(
+  'failure_cases',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    analysisId: uuid('analysis_id')
+      .notNull()
+      .references(() => failureAnalyses.id, { onDelete: 'cascade' }),
+    failureType: failureTypeEnum('failure_type').notNull(),
+    label: text('label'),
+    params: jsonb('params').notNull().default({}),
+    runId: uuid('run_id').references(() => simulationRuns.id, {
+      onDelete: 'set null',
+    }),
+    status: analysisStatusEnum('status').default('pending').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    analysisIdIdx: index('failure_cases_analysis_id_idx').on(table.analysisId),
+  }),
+);
+
 // ── Custom Types ───────────────────────────────────────────────────────────
 
 const bytea = customType<{ data: Buffer; driverData: string }>({
