@@ -57,6 +57,15 @@ export const simulationTypeEnum = pgEnum('simulation_type', [
   'steady_state',
 ]);
 
+export const subscriptionTierEnum = pgEnum('subscription_tier', [
+  'free',
+  'academic',
+  'starter',
+  'pro',
+  'team',
+  'enterprise',
+]);
+
 // ── NextAuth Tables ────────────────────────────────────────────────────────
 
 export const unitsPrefEnum = pgEnum('units_pref', ['si', 'imperial']);
@@ -938,5 +947,29 @@ export const reviewStatuses = pgTable(
   },
   (table) => ({
     modelIdIdx: index('review_statuses_model_id_idx').on(table.modelId),
+  }),
+);
+
+// ── Subscriptions / Billing ────────────────────────────────────────────────
+
+export const subscriptions = pgTable(
+  'subscriptions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').references(() => users.id),
+    orgId: uuid('org_id').references(() => organizations.id),
+    tier: subscriptionTierEnum('tier').notNull().default('free'),
+    stripeCustomerId: text('stripe_customer_id'),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    status: text('status').notNull().default('active'),
+    currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }),
+    seatCount: integer('seat_count').notNull().default(1),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('subscriptions_user_id_idx').on(table.userId),
+    orgIdIdx: index('subscriptions_org_id_idx').on(table.orgId),
+    stripeCustomerIdIdx: index('subscriptions_stripe_customer_id_idx').on(table.stripeCustomerId),
   }),
 );
