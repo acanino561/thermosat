@@ -11,6 +11,7 @@ import {
   index,
   primaryKey,
   customType,
+  unique,
 } from 'drizzle-orm/pg-core';
 
 // ── Enums ──────────────────────────────────────────────────────────────────
@@ -803,6 +804,47 @@ export const modelComments = pgTable(
   },
   (table) => ({
     modelIdIdx: index('model_comments_model_id_idx').on(table.modelId),
+  }),
+);
+
+// ── AI Advisor ─────────────────────────────────────────────────────────────
+
+export const advisorAnalyses = pgTable(
+  'advisor_analyses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    modelId: uuid('model_id')
+      .notNull()
+      .references(() => thermalModels.id, { onDelete: 'cascade' }),
+    runId: uuid('run_id').references(() => simulationRuns.id, {
+      onDelete: 'set null',
+    }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    deterministicFindings: jsonb('deterministic_findings').notNull().default([]),
+    llmFindings: jsonb('llm_findings'),
+    tokensUsed: integer('tokens_used'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    modelIdIdx: index('advisor_analyses_model_id_idx').on(table.modelId),
+    userIdIdx: index('advisor_analyses_user_id_idx').on(table.userId),
+  }),
+);
+
+export const advisorMonthlyUsage = pgTable(
+  'advisor_monthly_usage',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    yearMonth: text('year_month').notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (table) => ({
+    uniqueUserMonth: unique().on(table.userId, table.yearMonth),
   }),
 );
 
