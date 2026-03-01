@@ -85,6 +85,21 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
       })
       .returning();
 
+    try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: user.id,
+        action: 'review_status.changed',
+        entityType: 'review_status',
+        entityId: row.id,
+        projectId: model.projectId,
+        modelId: mid,
+        after: row,
+        ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
+
     return NextResponse.json({ data: row }, { status: 201 });
   } catch (error) {
     console.error('POST /api/models/[mid]/review-status error:', error);

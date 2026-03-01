@@ -150,6 +150,21 @@ export async function PUT(
         });
       }
 
+      try {
+        const { logAuditEvent } = await import('@/lib/audit/logger');
+        await logAuditEvent({
+          userId: user.id,
+          action: 'model.updated',
+          entityType: 'model',
+          entityId: mid,
+          projectId: id,
+          modelId: mid,
+          after: updated,
+          ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+          userAgent: request.headers.get('user-agent') ?? undefined,
+        });
+      } catch { /* audit best-effort */ }
+
       return NextResponse.json({
         model: updated,
         savedAt: new Date().toISOString(),
@@ -176,6 +191,22 @@ export async function PUT(
       .set(updateData)
       .where(eq(thermalModels.id, mid))
       .returning();
+
+    try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: user.id,
+        action: 'model.updated',
+        entityType: 'model',
+        entityId: mid,
+        projectId: id,
+        modelId: mid,
+        before: existing,
+        after: updated,
+        ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
 
     return NextResponse.json({ model: updated });
   } catch (error) {
@@ -217,6 +248,21 @@ export async function DELETE(
     if (!existing) return notFoundResponse('Model');
 
     await db.delete(thermalModels).where(eq(thermalModels.id, mid));
+
+    try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: user.id,
+        action: 'model.deleted',
+        entityType: 'model',
+        entityId: mid,
+        projectId: id,
+        modelId: mid,
+        before: existing,
+        ipAddress: _request.headers.get('x-forwarded-for') ?? _request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: _request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
 
     return NextResponse.json({ success: true });
   } catch (error) {

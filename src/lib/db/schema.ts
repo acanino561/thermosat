@@ -848,6 +848,48 @@ export const advisorMonthlyUsage = pgTable(
   }),
 );
 
+// ── Audit Trail ────────────────────────────────────────────────────────────
+
+export const auditActionEnum = pgEnum('audit_action', [
+  'project.created', 'project.updated', 'project.deleted',
+  'model.created', 'model.updated', 'model.deleted',
+  'node.created', 'node.updated', 'node.deleted',
+  'conductor.created', 'conductor.updated', 'conductor.deleted',
+  'simulation.run', 'simulation.completed',
+  'share.created', 'share.revoked',
+  'comment.created', 'comment.resolved',
+  'review_status.changed',
+  'api_key.created', 'api_key.revoked',
+  'member.invited', 'member.removed',
+]);
+
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orgId: uuid('org_id').references(() => organizations.id, { onDelete: 'set null' }),
+    projectId: uuid('project_id').references(() => projects.id, { onDelete: 'set null' }),
+    modelId: uuid('model_id').references(() => thermalModels.id, { onDelete: 'set null' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    action: auditActionEnum('action').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    before: jsonb('before'),
+    after: jsonb('after'),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index('audit_logs_org_id_idx').on(table.orgId),
+    projectIdIdx: index('audit_logs_project_id_idx').on(table.projectId),
+    userIdIdx: index('audit_logs_user_id_idx').on(table.userId),
+    createdAtIdx: index('audit_logs_created_at_idx').on(table.createdAt),
+  }),
+);
+
 export const reviewStatusEnum = pgEnum('review_status_type', [
   'draft',
   'in_review',

@@ -73,6 +73,21 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
       .returning();
 
     try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: auth.userId,
+        action: 'simulation.run',
+        entityType: 'simulation',
+        entityId: run.id,
+        projectId: model.projectId,
+        modelId: id,
+        after: { runId: run.id, simulationType: parsed.data.simulationType },
+        ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
+
+    try {
       await db.update(simulationRuns).set({ progress: 10 }).where(eq(simulationRuns.id, run.id));
 
       const network = buildThermalNetwork(

@@ -56,6 +56,21 @@ export async function POST(request: Request): Promise<NextResponse> {
       })
       .returning();
 
+    try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: user.id,
+        action: 'project.created',
+        entityType: 'project',
+        entityId: project.id,
+        projectId: project.id,
+        orgId: project.orgId ?? undefined,
+        after: project,
+        ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
+
     return NextResponse.json({ project }, { status: 201 });
   } catch (error) {
     console.error('POST /api/projects error:', error);

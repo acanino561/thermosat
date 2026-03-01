@@ -37,6 +37,21 @@ export async function DELETE(_request: Request, { params }: RouteParams): Promis
 
     await db.update(shareLinks).set({ revokedAt: new Date() }).where(eq(shareLinks.id, sid));
 
+    try {
+      const { logAuditEvent } = await import('@/lib/audit/logger');
+      await logAuditEvent({
+        userId: user.id,
+        action: 'share.revoked',
+        entityType: 'share_link',
+        entityId: sid,
+        projectId: model.projectId,
+        modelId: mid,
+        before: link,
+        ipAddress: _request.headers.get('x-forwarded-for') ?? _request.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: _request.headers.get('user-agent') ?? undefined,
+      });
+    } catch { /* audit best-effort */ }
+
     return NextResponse.json({ data: { success: true } });
   } catch (error) {
     console.error('DELETE /api/models/[mid]/share/[sid] error:', error);
