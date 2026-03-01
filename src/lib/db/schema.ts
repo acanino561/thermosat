@@ -568,6 +568,32 @@ export const simulationResults = pgTable(
   }),
 );
 
+// ── API Keys ───────────────────────────────────────────────────────────────
+
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    orgId: uuid('org_id').references(() => organizations.id, {
+      onDelete: 'cascade',
+    }),
+    keyHash: text('key_hash').notNull().unique(),
+    keyHint: text('key_hint').notNull(),
+    label: text('label').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    lastUsedAt: timestamp('last_used_at', { mode: 'date' }),
+    expiresAt: timestamp('expires_at', { mode: 'date' }),
+    revokedAt: timestamp('revoked_at', { mode: 'date' }),
+  },
+  (table) => ({
+    userIdIdx: index('api_keys_user_id_idx').on(table.userId),
+    keyHashIdx: index('api_keys_key_hash_idx').on(table.keyHash),
+  }),
+);
+
 // ── Custom Types ───────────────────────────────────────────────────────────
 
 const bytea = customType<{ data: Buffer; driverData: string }>({

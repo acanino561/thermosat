@@ -46,3 +46,38 @@ export function recordFailedAttempt(ip: string): void {
     entry.count++;
   }
 }
+
+// ── API Key Rate Limiter (token bucket) ────────────────────────────────────
+
+interface Bucket {
+  tokens: number;
+  lastRefill: number;
+}
+
+export class RateLimiter {
+  private buckets = new Map<string, Bucket>();
+
+  check(key: string, limit: number = 100, windowMs: number = 60000): boolean {
+    const now = Date.now();
+    const bucket = this.buckets.get(key);
+
+    if (!bucket) {
+      this.buckets.set(key, { tokens: limit - 1, lastRefill: now });
+      return true;
+    }
+
+    const elapsed = now - bucket.lastRefill;
+    const refill = (elapsed / windowMs) * limit;
+    bucket.tokens = Math.min(limit, bucket.tokens + refill);
+    bucket.lastRefill = now;
+
+    if (bucket.tokens < 1) {
+      return false;
+    }
+
+    bucket.tokens -= 1;
+    return true;
+  }
+}
+
+export const rateLimiter = new RateLimiter();
