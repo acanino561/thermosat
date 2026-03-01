@@ -3,6 +3,12 @@
  * 
  * Idempotent: safe to run multiple times. Deletes and recreates if exists.
  * Run with: pnpm db:seed:demo
+ *
+ * Physics assumptions:
+ * - Hot case: epoch = June 21 2025, beta ≈ 74.8°, no eclipse (F_eclipse = 0)
+ * - At 550 km: F_earth ≈ 0.847 (sin²(arcsin(R_e/(R_e+h))))
+ * - Deep Space view factors: F_space = 1 - F_earth for surfaces with OLR heat loads
+ *   solar/side: F_space = 0.50, earth_facing: F_space = 0.15, anti_earth: F_space = 0.85
  */
 
 import 'dotenv/config';
@@ -107,15 +113,19 @@ const CONDUCTOR_DEFS: ConductorDef[] = [
   // 2 contact
   { from: 6, to: 11, type: 'contact', conductance: 2.0 },
   { from: 7, to: 11, type: 'contact', conductance: 1.5 },
-  // Radiation to deep space (index 12) — all external surfaces
-  { from: 0,  to: 12, type: 'radiation', viewFactor: 0.85 },  // +X Panel → space
-  { from: 1,  to: 12, type: 'radiation', viewFactor: 0.85 },  // -X Panel → space
-  { from: 2,  to: 12, type: 'radiation', viewFactor: 0.85 },  // +Y Panel → space
-  { from: 3,  to: 12, type: 'radiation', viewFactor: 0.85 },  // -Y Panel → space
-  { from: 4,  to: 12, type: 'radiation', viewFactor: 0.90 },  // +Z Radiator → space (good view)
-  { from: 5,  to: 12, type: 'radiation', viewFactor: 0.85 },  // -Z Panel → space
-  { from: 10, to: 12, type: 'radiation', viewFactor: 0.50 },  // Separation Ring → space
-  { from: 11, to: 12, type: 'radiation', viewFactor: 0.30 },  // MLI Layer → space (low eps)
+  // Radiation to deep space — view factor depends on surface type and OLR treatment
+  // At 550 km: F_earth ≈ 0.847. F_space = 1 - F_earth for surfaces that receive OLR.
+  // Surfaces with NO OLR heat load (anti_earth): F_space ≈ 0.85 (faces mostly space)
+  // Surfaces with OLR heat load (solar side panels): F_space ≈ 0.50 (side-facing)
+  // Surfaces with OLR heat load (earth_facing / nadir): F_space ≈ 0.15 (mostly faces Earth)
+  { from: 0,  to: 12, type: 'radiation', viewFactor: 0.50 },  // +X Panel (solar/side) — has OLR load
+  { from: 1,  to: 12, type: 'radiation', viewFactor: 0.85 },  // -X Panel (anti_earth) — no OLR load ✓
+  { from: 2,  to: 12, type: 'radiation', viewFactor: 0.50 },  // +Y Panel (solar/side) — has OLR load
+  { from: 3,  to: 12, type: 'radiation', viewFactor: 0.85 },  // -Y Panel (anti_earth) — no OLR load ✓
+  { from: 4,  to: 12, type: 'radiation', viewFactor: 0.85 },  // +Z Radiator (anti_earth/zenith) — no OLR ✓
+  { from: 5,  to: 12, type: 'radiation', viewFactor: 0.15 },  // -Z Panel (earth_facing/nadir) — has OLR load
+  { from: 10, to: 12, type: 'radiation', viewFactor: 0.30 },  // Separation Ring — partial view
+  { from: 11, to: 12, type: 'radiation', viewFactor: 0.30 },  // MLI Layer — low eps, partial view
 ];
 
 async function seedDemo(): Promise<void> {
@@ -163,15 +173,15 @@ async function seedDemo(): Promise<void> {
   const orbitalConfig: OrbitalConfig = {
     altitude: 550,
     inclination: 51.6,
-    raan: 180,              // produces moderate beta angle → some eclipse
-    epoch: '2025-03-21T12:00:00Z', // equinox — maximum eclipse duration
+    raan: 180,
+    epoch: '2025-06-21T12:00:00Z', // Summer solstice — beta ≈ 74.8° → no eclipse (hot case)
   };
 
   await seedDb.insert(thermalModels).values({
     id: DEMO_MODEL_ID,
     projectId: DEMO_PROJECT_ID,
     name: '3U CubeSat LEO Hot Case',
-    description: '12-node thermal model with heat pipes, MLI, and orbital environment',
+    description: '12-node thermal model with heat pipes, MLI, and orbital environment. Hot case: summer solstice epoch (beta ≈ 74.8°, no eclipse) at 550 km / 51.6° inclination.',
     orbitalConfig: orbitalConfig as any,
     version: 1,
   });
