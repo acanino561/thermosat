@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { projects } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { updateProjectSchema } from '@/lib/validators/projects';
 import {
   getAuthenticatedUser,
@@ -10,7 +10,9 @@ import {
   validationErrorResponse,
   serverErrorResponse,
   parseJsonBody,
+  forbiddenResponse,
 } from '@/lib/utils/api-helpers';
+import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -25,10 +27,18 @@ export async function GET(
     if (!user) return unauthorizedResponse();
 
     const { id } = await params;
+
+    try {
+      await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
+
     const [project] = await db
       .select()
       .from(projects)
-      .where(and(eq(projects.id, id), eq(projects.userId, user.id)));
+      .where(eq(projects.id, id));
 
     if (!project) return notFoundResponse('Project');
 
@@ -48,6 +58,21 @@ export async function PUT(
     if (!user) return unauthorizedResponse();
 
     const { id } = await params;
+
+    let role;
+    try {
+      role = await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
+
+    try {
+      requireRole(role, 'editor');
+    } catch {
+      return forbiddenResponse();
+    }
+
     const body = await parseJsonBody(request);
     if (!body) {
       return NextResponse.json(
@@ -64,7 +89,7 @@ export async function PUT(
     const [existing] = await db
       .select()
       .from(projects)
-      .where(and(eq(projects.id, id), eq(projects.userId, user.id)));
+      .where(eq(projects.id, id));
     if (!existing) return notFoundResponse('Project');
 
     const [updated] = await db
@@ -92,10 +117,25 @@ export async function DELETE(
     if (!user) return unauthorizedResponse();
 
     const { id } = await params;
+
+    let role;
+    try {
+      role = await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
+
+    try {
+      requireRole(role, 'owner');
+    } catch {
+      return forbiddenResponse();
+    }
+
     const [existing] = await db
       .select()
       .from(projects)
-      .where(and(eq(projects.id, id), eq(projects.userId, user.id)));
+      .where(eq(projects.id, id));
     if (!existing) return notFoundResponse('Project');
 
     await db.delete(projects).where(eq(projects.id, id));

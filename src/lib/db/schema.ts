@@ -138,6 +138,78 @@ export const passwordResetTokens = pgTable(
   }),
 );
 
+// ── Organization Enums ─────────────────────────────────────────────────────
+
+export const orgRoleEnum = pgEnum('org_role', ['owner', 'admin', 'member']);
+
+export const teamRoleEnum = pgEnum('team_role', ['admin', 'editor', 'viewer']);
+
+// ── Organization Tables ────────────────────────────────────────────────────
+
+export const organizations = pgTable('organizations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  logoUrl: text('logo_url'),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+export const orgMembers = pgTable(
+  'org_members',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orgId: uuid('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: orgRoleEnum('role').notNull().default('member'),
+    invitedAt: timestamp('invited_at', { mode: 'date' }).defaultNow().notNull(),
+    joinedAt: timestamp('joined_at', { mode: 'date' }),
+  },
+  (table) => ({
+    orgIdIdx: index('org_members_org_id_idx').on(table.orgId),
+    userIdIdx: index('org_members_user_id_idx').on(table.userId),
+  }),
+);
+
+export const teams = pgTable(
+  'teams',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orgId: uuid('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index('teams_org_id_idx').on(table.orgId),
+  }),
+);
+
+export const teamMembers = pgTable(
+  'team_members',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    teamId: uuid('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: teamRoleEnum('role').notNull().default('viewer'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    teamIdIdx: index('team_members_team_id_idx').on(table.teamId),
+    userIdIdx: index('team_members_user_id_idx').on(table.userId),
+  }),
+);
+
 // ── Application Tables ─────────────────────────────────────────────────────
 
 export const projects = pgTable(
@@ -147,6 +219,9 @@ export const projects = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    orgId: uuid('org_id').references(() => organizations.id, {
+      onDelete: 'set null',
+    }),
     name: text('name').notNull(),
     description: text('description').default(''),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -155,6 +230,25 @@ export const projects = pgTable(
   },
   (table) => ({
     userIdIdx: index('projects_user_id_idx').on(table.userId),
+    orgIdIdx: index('projects_org_id_idx').on(table.orgId),
+  }),
+);
+
+export const teamProjects = pgTable(
+  'team_projects',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    teamId: uuid('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    teamIdIdx: index('team_projects_team_id_idx').on(table.teamId),
+    projectIdIdx: index('team_projects_project_id_idx').on(table.projectId),
   }),
 );
 

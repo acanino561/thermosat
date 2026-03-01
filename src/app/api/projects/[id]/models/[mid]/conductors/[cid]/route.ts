@@ -9,10 +9,11 @@ import {
   notFoundResponse,
   validationErrorResponse,
   serverErrorResponse,
-  verifyProjectOwnership,
   verifyModelOwnership,
   parseJsonBody,
+  forbiddenResponse,
 } from '@/lib/utils/api-helpers';
+import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
 
 interface RouteParams {
   params: Promise<{ id: string; mid: string; cid: string }>;
@@ -27,8 +28,21 @@ export async function PUT(
     if (!user) return unauthorizedResponse();
 
     const { id, mid, cid } = await params;
-    const project = await verifyProjectOwnership(id, user.id);
-    if (!project) return notFoundResponse('Project');
+
+    let role;
+    try {
+      role = await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
+
+    try {
+      requireRole(role, 'editor');
+    } catch {
+      return forbiddenResponse();
+    }
+
     const model = await verifyModelOwnership(mid, id);
     if (!model) return notFoundResponse('Model');
 
@@ -73,8 +87,21 @@ export async function DELETE(
     if (!user) return unauthorizedResponse();
 
     const { id, mid, cid } = await params;
-    const project = await verifyProjectOwnership(id, user.id);
-    if (!project) return notFoundResponse('Project');
+
+    let role;
+    try {
+      role = await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
+
+    try {
+      requireRole(role, 'editor');
+    } catch {
+      return forbiddenResponse();
+    }
+
     const model = await verifyModelOwnership(mid, id);
     if (!model) return notFoundResponse('Model');
 
