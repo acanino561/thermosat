@@ -164,49 +164,61 @@ function MoatItem({ item, index }: { item: typeof items[number]; index: number }
       className="relative py-12 lg:py-16"
       style={{ borderBottom: '1px solid var(--tc-border)' }}
     >
-      <div className={`flex items-center gap-8 lg:gap-0 ${isLeft ? '' : 'flex-row-reverse'}`}>
+      {/* Card hover wrapper */}
+      <motion.div
+        whileHover={{ backgroundColor: 'rgba(255,255,255,0.025)' }}
+        transition={{ duration: 0.2 }}
+        className="-mx-4 px-4 rounded-lg"
+        style={{ borderRadius: 8 }}
+      >
+        <div className={`flex items-center gap-8 lg:gap-0 ${isLeft ? '' : 'flex-row-reverse'}`}>
 
-        {/* Content block — ~45% width on desktop */}
-        <div className={`w-full lg:w-[45%] ${isLeft ? 'lg:pr-12' : 'lg:pl-12'}`}>
-          {/* Number + title */}
-          <div className="flex items-baseline gap-4 mb-4">
-            <span
-              className="font-mono font-bold shrink-0"
-              style={{ color: 'var(--tc-accent)', fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', opacity: 0.6 }}
+          {/* Content block */}
+          <div className={`w-full lg:w-[58%] ${isLeft ? 'lg:pr-8' : 'lg:pl-8'}`}>
+            {/* Number + title */}
+            <div className="flex items-baseline gap-4 mb-4">
+              <motion.span
+                className="font-mono font-bold shrink-0"
+                style={{ color: 'var(--tc-accent)', fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)' }}
+                initial={{ opacity: 0.6 }}
+                whileHover={{ opacity: 1 }}
+                transition={{ duration: 0.15 }}
+              >
+                {item.num}
+              </motion.span>
+              <h3
+                className="font-mono font-bold tracking-[0.06em] leading-tight"
+                style={{ color: 'var(--tc-text)', fontSize: 'clamp(1rem, 1.8vw, 1.25rem)' }}
+              >
+                {item.title}
+              </h3>
+            </div>
+
+            <p
+              className="text-sm leading-relaxed font-sans"
+              style={{ color: 'var(--tc-text-secondary)' }}
             >
-              {item.num}
-            </span>
-            <h3
-              className="font-mono font-bold tracking-[0.06em] leading-tight"
-              style={{ color: 'var(--tc-text)', fontSize: 'clamp(1rem, 1.8vw, 1.25rem)' }}
-            >
-              {item.title}
-            </h3>
+              {item.body}
+            </p>
           </div>
 
-          <p
-            className="text-sm leading-relaxed font-sans"
-            style={{ color: 'var(--tc-text-secondary)' }}
+          {/* Icon occupies the negative-space side — desktop only */}
+          <div
+            className={`hidden lg:flex lg:w-[36%] items-center justify-center`}
+            style={{ color: 'var(--tc-accent)', opacity: 0.65 }}
           >
-            {item.body}
-          </p>
-        </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={isInView ? { opacity: 1, scale: 1 } : {}}
+              whileHover={{ scale: 1.12, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
+              <Icon />
+            </motion.div>
+          </div>
 
-        {/* Icon occupies the negative-space side — desktop only */}
-        <div
-          className={`hidden lg:flex flex-1 items-center ${isLeft ? 'justify-end' : 'justify-start'}`}
-          style={{ color: 'var(--tc-accent)', opacity: 0.25 }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={isInView ? { opacity: 1, scale: 1 } : {}}
-            transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
-          >
-            <Icon />
-          </motion.div>
         </div>
-
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -262,8 +274,8 @@ export function MoatSection() {
           <div className="rule-accent mt-8" style={{ maxWidth: 80 }} />
         </motion.div>
 
-        {/* Staggered items */}
-        <div>
+        {/* Staggered items — narrower container for tighter editorial feel */}
+        <div className="max-w-[860px] mx-auto">
           {items.map((item, i) => (
             <MoatItem key={item.num} item={item} index={i} />
           ))}
