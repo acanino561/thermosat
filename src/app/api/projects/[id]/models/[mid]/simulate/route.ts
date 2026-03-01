@@ -16,9 +16,10 @@ import {
   notFoundResponse,
   validationErrorResponse,
   serverErrorResponse,
-  verifyProjectOwnership,
   parseJsonBody,
+  forbiddenResponse,
 } from '@/lib/utils/api-helpers';
+import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
 import { buildThermalNetwork, runSimulation } from '@/lib/solver/thermal-network';
 import { computeEnergyBalance } from '@/lib/solver/energy-balance';
 import { computeSensitivityMatrix } from '@/lib/solver/sensitivity';
@@ -40,8 +41,20 @@ export async function POST(
     if (!user) return unauthorizedResponse();
 
     const { id, mid } = await params;
-    const project = await verifyProjectOwnership(id, user.id);
-    if (!project) return notFoundResponse('Project');
+
+    let role;
+    try {
+      role = await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
+
+    try {
+      requireRole(role, 'editor');
+    } catch {
+      return forbiddenResponse();
+    }
 
     // Get model
     const [model] = await db

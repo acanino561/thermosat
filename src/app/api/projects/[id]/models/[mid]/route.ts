@@ -15,9 +15,10 @@ import {
   notFoundResponse,
   validationErrorResponse,
   serverErrorResponse,
-  verifyProjectOwnership,
   parseJsonBody,
+  forbiddenResponse,
 } from '@/lib/utils/api-helpers';
+import { getUserProjectAccess, requireRole, AccessDeniedError } from '@/lib/auth/access';
 
 interface RouteParams {
   params: Promise<{ id: string; mid: string }>;
@@ -32,8 +33,13 @@ export async function GET(
     if (!user) return unauthorizedResponse();
 
     const { id, mid } = await params;
-    const project = await verifyProjectOwnership(id, user.id);
-    if (!project) return notFoundResponse('Project');
+
+    try {
+      await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
 
     const [model] = await db
       .select()
@@ -80,8 +86,20 @@ export async function PUT(
     if (!user) return unauthorizedResponse();
 
     const { id, mid } = await params;
-    const project = await verifyProjectOwnership(id, user.id);
-    if (!project) return notFoundResponse('Project');
+
+    let role;
+    try {
+      role = await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
+
+    try {
+      requireRole(role, 'editor');
+    } catch {
+      return forbiddenResponse();
+    }
 
     const body = await parseJsonBody<Record<string, unknown>>(request);
     if (!body) {
@@ -175,8 +193,20 @@ export async function DELETE(
     if (!user) return unauthorizedResponse();
 
     const { id, mid } = await params;
-    const project = await verifyProjectOwnership(id, user.id);
-    if (!project) return notFoundResponse('Project');
+
+    let role;
+    try {
+      role = await getUserProjectAccess(user.id, id);
+    } catch (e) {
+      if (e instanceof AccessDeniedError) return forbiddenResponse();
+      throw e;
+    }
+
+    try {
+      requireRole(role, 'admin');
+    } catch {
+      return forbiddenResponse();
+    }
 
     const [existing] = await db
       .select()

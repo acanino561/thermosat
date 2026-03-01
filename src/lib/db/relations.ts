@@ -14,6 +14,11 @@ import {
   simulationRuns,
   simulationResults,
   sensitivityMatrices,
+  organizations,
+  orgMembers,
+  teams,
+  teamMembers,
+  teamProjects,
 } from './schema';
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -21,6 +26,56 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   projects: many(projects),
   materials: many(materials),
+  orgMembers: many(orgMembers),
+  teamMembers: many(teamMembers),
+}));
+
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  members: many(orgMembers),
+  teams: many(teams),
+  projects: many(projects),
+}));
+
+export const orgMembersRelations = relations(orgMembers, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orgMembers.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [orgMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [teams.orgId],
+    references: [organizations.id],
+  }),
+  members: many(teamMembers),
+  projects: many(teamProjects),
+}));
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamMembers.teamId],
+    references: [teams.id],
+  }),
+  user: one(users, {
+    fields: [teamMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const teamProjectsRelations = relations(teamProjects, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamProjects.teamId],
+    references: [teams.id],
+  }),
+  project: one(projects, {
+    fields: [teamProjects.projectId],
+    references: [projects.id],
+  }),
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -42,8 +97,13 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     fields: [projects.userId],
     references: [users.id],
   }),
+  organization: one(organizations, {
+    fields: [projects.orgId],
+    references: [organizations.id],
+  }),
   thermalModels: many(thermalModels),
   materials: many(materials),
+  teamProjects: many(teamProjects),
 }));
 
 export const thermalModelsRelations = relations(
