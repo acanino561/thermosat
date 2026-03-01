@@ -3,6 +3,108 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 
+function SatelliteSilhouette() {
+  return (
+    <svg width="48" height="28" viewBox="0 0 48 28" fill="none" aria-hidden>
+      {/* Left solar panel */}
+      <rect x="0" y="11" width="14" height="6" rx="1" fill="currentColor" opacity="0.9" />
+      {/* Body */}
+      <rect x="15" y="4" width="18" height="20" rx="2" fill="currentColor" opacity="0.95" />
+      {/* Right solar panel */}
+      <rect x="34" y="11" width="14" height="6" rx="1" fill="currentColor" opacity="0.9" />
+      {/* Antenna */}
+      <line x1="24" y1="4" x2="24" y2="0" stroke="currentColor" strokeWidth="1.5" opacity="0.7" />
+    </svg>
+  );
+}
+
+function OrbitalPath() {
+  return (
+    <svg
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+      viewBox="0 0 1400 600"
+      preserveAspectRatio="xMidYMid meet"
+      aria-hidden
+    >
+      <path
+        d="M 80 480 Q 300 60 700 180 Q 1050 300 1320 280"
+        fill="none"
+        stroke="rgba(255,160,50,0.08)"
+        strokeWidth="1.5"
+        strokeDasharray="4 8"
+      />
+    </svg>
+  );
+}
+
+function OrbitalArcBg({ sectionRef }: { sectionRef: React.RefObject<HTMLElement | null> }) {
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start end', 'end start'],
+  });
+
+  const satX = useTransform(scrollYProgress, (p: number) => {
+    const angle = Math.PI * (1 - p);
+    return `${8 + 82 * Math.cos(angle) * 0.5 + 50 * (1 - Math.cos(angle))}%`;
+  });
+  const satY = useTransform(scrollYProgress, (p: number) => {
+    const angle = Math.PI * (1 - p);
+    return `${75 - 55 * Math.sin(angle)}%`;
+  });
+
+  const satRotate = useTransform(scrollYProgress, [0, 0.3, 0.7, 1], [-20, -5, 10, 25]);
+  const glowOpacity = useTransform(scrollYProgress, [0, 0.2, 0.5, 0.8, 1], [0, 0.3, 0.5, 0.3, 0]);
+
+  return (
+    <>
+      <OrbitalPath />
+
+      {/* Sun bloom */}
+      <div
+        style={{
+          position: 'absolute',
+          right: '8%',
+          top: '40%',
+          transform: 'translate(50%, -50%)',
+          width: 280,
+          height: 280,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,200,80,0.18) 0%, rgba(255,140,30,0.10) 30%, rgba(255,80,0,0.04) 60%, transparent 75%)',
+          filter: 'blur(2px)',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+
+      {/* Satellite */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          left: satX,
+          top: satY,
+          rotate: satRotate,
+          translateX: '-50%',
+          translateY: '-50%',
+          pointerEvents: 'none',
+          zIndex: 1,
+          color: 'rgba(255,255,255,0.65)',
+        }}
+      >
+        <motion.div
+          style={{
+            position: 'absolute',
+            inset: -12,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,200,80,0.35) 0%, transparent 70%)',
+            opacity: glowOpacity,
+          }}
+        />
+        <SatelliteSilhouette />
+      </motion.div>
+    </>
+  );
+}
+
 const energyTerms = [
   {
     symbol: 'Q_solar',
@@ -130,6 +232,8 @@ export function EnergyBalanceSection() {
       ref={sectionRef}
       className="relative py-24 lg:py-32 px-6 lg:px-10 overflow-hidden"
     >
+      <OrbitalArcBg sectionRef={sectionRef} />
+
       {/* Parallax grid behind */}
       <motion.div
         style={{ y: bgY }}
