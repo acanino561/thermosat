@@ -10,14 +10,6 @@ const SatelliteScene = dynamic(
   { ssr: false },
 );
 
-/* Telemetry data overlays */
-const telemetryReadouts = [
-  { label: 'SOLAR PANEL +Y', value: '+142.3°C', status: 'WARN', x: 'right-[5%]', y: 'top-[22%]' },
-  { label: 'BUS CORE', value: '+21.7°C', status: 'NOM', x: 'right-[8%]', y: 'top-[42%]' },
-  { label: 'RADIATOR -Z', value: '-78.4°C', status: 'NOM', x: 'right-[3%]', y: 'top-[58%]' },
-  { label: 'ANTENNA FEED', value: '-12.6°C', status: 'NOM', x: 'right-[12%]', y: 'top-[74%]' },
-];
-
 function StatusBar() {
   return (
     <motion.div
@@ -29,18 +21,16 @@ function StatusBar() {
     >
       <span className="flex items-center gap-2 shrink-0">
         <span className="status-dot" />
-        SYS: NOMINAL
+        V&V: 10/10 PASSING
       </span>
       <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
-      <span className="shrink-0">ORBIT: LEO 408 km × 410 km</span>
+      <span className="shrink-0">SOLVER: RK4 + IMPLICIT EULER</span>
       <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
-      <span className="shrink-0">INCL: 51.64°</span>
+      <span className="shrink-0">PERF: 175× SPEEDUP</span>
       <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
-      <span className="shrink-0">β ANGLE: 52.3°</span>
+      <span className="shrink-0">NODES: 1,000 IN &lt;1s</span>
       <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
-      <span className="shrink-0">ECLIPSE: 35.2 min</span>
-      <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
-      <span className="shrink-0">Qs: 1361 W/m²</span>
+      <span className="shrink-0">PLATFORM: BROWSER-NATIVE</span>
     </motion.div>
   );
 }
@@ -76,7 +66,6 @@ export function HeroSection() {
         className="absolute inset-0 lg:left-[35%]"
       >
         <SatelliteScene />
-        {/* Scene overlay gradient for text readability */}
         <div
           className="absolute inset-0"
           style={{
@@ -91,37 +80,7 @@ export function HeroSection() {
         />
       </motion.div>
 
-      {/* Telemetry readouts floating over 3D scene */}
-      <div className="absolute inset-0 z-20 pointer-events-none hidden lg:block">
-        {telemetryReadouts.map((item, i) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1.8 + i * 0.15, duration: 0.4 }}
-            className={`absolute ${item.x} ${item.y}`}
-          >
-            <div className="font-mono text-[10px] tracking-[0.1em] flex items-baseline gap-3">
-              <span style={{ color: 'var(--tc-text-muted)' }}>{item.label}</span>
-              <span
-                className="text-sm font-semibold tabular-nums"
-                style={{ color: item.status === 'WARN' ? 'var(--tc-accent)' : 'var(--tc-text)' }}
-              >
-                {item.value}
-              </span>
-            </div>
-            <div
-              className="h-px mt-1"
-              style={{
-                background: `linear-gradient(90deg, rgba(var(--tc-accent-rgb), ${item.status === 'WARN' ? '0.4' : '0.1'}), transparent)`,
-                width: '80px',
-              }}
-            />
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Main content — left-aligned, asymmetric */}
+      {/* Main content */}
       <motion.div
         style={{ y: contentY, opacity: fadeOut }}
         className="relative z-20 flex-1 flex flex-col justify-center px-6 lg:px-10 max-w-[1400px] mx-auto w-full pt-20"
@@ -135,10 +94,9 @@ export function HeroSection() {
           style={{ color: 'var(--tc-text-muted)' }}
         >
           <span className="status-dot" />
-          THERMAL ANALYSIS PLATFORM v2.1 — PUBLIC BETA
+          TFAWS-GRADE V&V — 10/10 BENCHMARKS PASSING
         </motion.div>
 
-        {/* Massive asymmetric headline */}
         <div className="max-w-3xl">
           <h1 className="font-mono font-bold tracking-tighter leading-[0.9]">
             <motion.span
@@ -165,11 +123,11 @@ export function HeroSection() {
               transition={{ delay: 0.8, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="block text-display-xl text-accent"
             >
-              ANALYSIS
+              REIMAGINED
             </motion.span>
           </h1>
 
-          {/* Stefan-Boltzmann equation as design element */}
+          {/* Sub-tagline */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -179,11 +137,7 @@ export function HeroSection() {
           >
             <span className="text-accent opacity-60">▸</span>{' '}
             <span style={{ color: 'var(--tc-text-secondary)' }}>
-              q<sub>rad</sub> = εσT<sup>4</sup>
-            </span>
-            <span className="mx-3" style={{ color: 'var(--tc-text-dim)' }}>│</span>
-            <span style={{ color: 'var(--tc-text-secondary)' }}>
-              Q<sub>solar</sub> + Q<sub>albedo</sub> + Q<sub>IR</sub> + Q<sub>int</sub> = Q<sub>rad</sub> + mc(dT/dt)
+              Browser-native. Physics-accurate. Demo-ready.
             </span>
           </motion.div>
 
@@ -195,9 +149,9 @@ export function HeroSection() {
             className="mt-6 text-base max-w-lg leading-relaxed font-sans"
             style={{ color: 'var(--tc-text-secondary)' }}
           >
-            Engineering-grade spacecraft thermal analysis — fast, accurate, cloud-native. 
-            3D CAD import, orbital environment solver, V&V benchmarks, and multi-format export. 
-            Built for SmallSat startups, university teams, and NewSpace engineers.
+            Cloud-native spacecraft thermal analysis with RK4 and Implicit Euler solvers. 
+            Validated against analytical solutions from Incropera, NASA SP-8055, and ECSS standards 
+            — 10 out of 10 V&V benchmarks passing.
           </motion.p>
 
           {/* CTAs */}
@@ -208,25 +162,24 @@ export function HeroSection() {
             className="mt-10 flex flex-wrap items-center gap-4"
           >
             <Link
-              href="/signup"
+              href="/auth/signin"
               className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-6 py-3.5 transition-all duration-200 hover:shadow-[0_0_30px_rgba(var(--tc-accent-rgb),0.3)]"
               style={{ backgroundColor: 'var(--tc-accent)', color: '#fff' }}
             >
-              ACCESS CONSOLE
+              START FREE TRIAL
               <span>→</span>
             </Link>
-            <Link
-              href="#analysis"
+            <a
+              href="#demo"
               className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-6 py-3.5 transition-colors duration-200 hover:text-accent"
               style={{ color: 'var(--tc-text-secondary)', border: '1px solid var(--tc-border)' }}
             >
-              VIEW DOCUMENTATION
-            </Link>
+              WATCH DEMO
+            </a>
           </motion.div>
         </div>
       </motion.div>
 
-      {/* Bottom status bar */}
       <StatusBar />
     </section>
   );

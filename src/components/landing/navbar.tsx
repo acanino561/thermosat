@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValueEvent, useScroll } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { Logo } from '@/components/shared/logo';
 import Link from 'next/link';
 
 const navLinks = [
-  { label: 'ANALYSIS', href: '#analysis' },
-  { label: 'CAPABILITIES', href: '#capabilities' },
-  { label: 'SPECS', href: '#specs' },
+  { label: 'FEATURES', href: '#features' },
   { label: 'PRICING', href: '#pricing' },
+  { label: 'SIGN IN', href: '/auth/signin' },
 ];
 
 function MissionClock() {
@@ -19,9 +18,7 @@ function MissionClock() {
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      setTime(
-        now.toISOString().slice(11, 19)
-      );
+      setTime(now.toISOString().slice(11, 19));
     };
     update();
     const id = setInterval(update, 1000);
@@ -65,14 +62,14 @@ export function Navbar() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
                 className="font-mono text-[11px] tracking-[0.15em] transition-colors duration-200 hover:text-accent"
                 style={{ color: 'var(--tc-text-muted)' }}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -80,21 +77,14 @@ export function Navbar() {
             <MissionClock />
             <div className="w-px h-4" style={{ backgroundColor: 'var(--tc-border)' }} />
             <Link
-              href="/login"
-              className="font-mono text-[11px] tracking-[0.15em] transition-colors duration-200 hover:text-accent"
-              style={{ color: 'var(--tc-text-secondary)' }}
-            >
-              LOG IN
-            </Link>
-            <Link
-              href="/signup"
+              href="/auth/signin"
               className="font-mono text-[11px] tracking-[0.15em] px-4 py-2 transition-all duration-200 hover:shadow-[0_0_20px_rgba(var(--tc-accent-rgb),0.3)]"
               style={{
                 backgroundColor: 'var(--tc-accent)',
                 color: '#fff',
               }}
             >
-              ACCESS CONSOLE →
+              REQUEST DEMO →
             </Link>
           </div>
 
@@ -123,7 +113,7 @@ export function Navbar() {
           >
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.href}
                   href={link.href}
                   className="font-mono text-xs tracking-[0.15em] py-3 px-4 transition-colors hover:text-accent"
@@ -131,22 +121,15 @@ export function Navbar() {
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
               <div className="mt-4 pt-4 flex flex-col gap-2" style={{ borderTop: '1px solid var(--tc-border)' }}>
                 <Link
-                  href="/login"
-                  className="font-mono text-xs tracking-[0.15em] py-3 px-4"
-                  style={{ color: 'var(--tc-text-secondary)' }}
-                >
-                  LOG IN
-                </Link>
-                <Link
-                  href="/signup"
+                  href="/auth/signin"
                   className="font-mono text-xs tracking-[0.15em] py-3 px-4 text-center"
                   style={{ backgroundColor: 'var(--tc-accent)', color: '#fff' }}
                 >
-                  ACCESS CONSOLE →
+                  REQUEST DEMO →
                 </Link>
               </div>
             </div>

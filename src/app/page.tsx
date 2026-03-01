@@ -6,11 +6,11 @@ import { GrainOverlay } from '@/components/shared/grain-overlay';
 import { Navbar } from '@/components/landing/navbar';
 import { HeroSection } from '@/components/landing/hero-section';
 import { TelemetryStrip } from '@/components/landing/telemetry-strip';
-import { EnergyBalanceSection } from '@/components/landing/energy-balance-section';
-import { CapabilitiesSection } from '@/components/landing/capabilities-section';
-import { SpecComparison } from '@/components/landing/spec-comparison';
+import { FeaturesSection } from '@/components/landing/features-section';
+import { VvBadgeSection } from '@/components/landing/vv-badge-section';
+import { DemoVideoSection } from '@/components/landing/demo-video-section';
 import { PricingSection } from '@/components/landing/pricing-section';
-import { CtaSection } from '@/components/landing/cta-section';
+import { TryDemoSection } from '@/components/landing/try-demo-section';
 import { Footer } from '@/components/landing/footer';
 import { PaletteSwitcher } from '@/components/landing/palette-switcher';
 
@@ -23,11 +23,11 @@ export default function LandingPage() {
       <main>
         <HeroSection />
         <TelemetryStrip />
-        <EnergyBalanceSection />
-        <CapabilitiesSection />
-        <SpecComparison />
+        <FeaturesSection />
+        <VvBadgeSection />
+        <DemoVideoSection />
         <PricingSection />
-        <CtaSection />
+        <TryDemoSection />
       </main>
       <Footer />
       <PaletteSwitcher />
