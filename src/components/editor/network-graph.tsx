@@ -18,7 +18,11 @@ const nodeTypeShapes: Record<string, 'circle' | 'diamond' | 'square'> = {
   boundary: 'square',
 };
 
-export function NetworkGraph() {
+interface NetworkGraphProps {
+  readOnly?: boolean;
+}
+
+export function NetworkGraph({ readOnly }: NetworkGraphProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const {
@@ -233,7 +237,7 @@ export function NetworkGraph() {
   const handleMouseDown = (e: React.MouseEvent) => {
     const nodeId = findNodeAt(e.clientX, e.clientY);
     if (nodeId) {
-      setDragNode(nodeId);
+      if (!readOnly) setDragNode(nodeId);
       selectNode(nodeId);
     } else if (e.button === 0) {
       setIsPanning(true);
@@ -246,7 +250,7 @@ export function NetworkGraph() {
     const dx = e.clientX - lastMouse.x;
     const dy = e.clientY - lastMouse.y;
 
-    if (dragNode) {
+    if (dragNode && !readOnly) {
       updateNode(dragNode, {
         x: (nodes.find((n) => n.id === dragNode)?.x ?? 0) + dx / scale,
         y: (nodes.find((n) => n.id === dragNode)?.y ?? 0) + dy / scale,

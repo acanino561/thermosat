@@ -42,12 +42,30 @@ import { ShareDialog } from '@/components/collab/share-dialog';
 import { ReviewStatusBar } from '@/components/collab/review-status-bar';
 import Link from 'next/link';
 
+/** Tooltip wrapper for readOnly mode — shows signup CTA on disabled buttons */
+function ReadOnlyTooltip({ children, readOnly }: { children: React.ReactNode; readOnly?: boolean }) {
+  if (!readOnly) return <>{children}</>;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">{children}</span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <Link href="/signup" className="text-cyan-400 hover:underline">
+          Sign up to use this feature →
+        </Link>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 interface ToolbarProps {
   projectId: string;
   role?: 'owner' | 'admin' | 'editor' | 'viewer';
+  readOnly?: boolean;
 }
 
-export function Toolbar({ projectId, role }: ToolbarProps) {
+export function Toolbar({ projectId, role, readOnly }: ToolbarProps) {
   const isViewer = role === 'viewer';
   const {
     modelName,
@@ -82,8 +100,10 @@ export function Toolbar({ projectId, role }: ToolbarProps) {
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts (disabled in readOnly mode)
   useEffect(() => {
+    if (readOnly) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger when typing in inputs
       const target = e.target as HTMLElement;
@@ -108,7 +128,7 @@ export function Toolbar({ projectId, role }: ToolbarProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, save]);
+  }, [undo, redo, save, readOnly]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -178,50 +198,83 @@ export function Toolbar({ projectId, role }: ToolbarProps) {
           </Badge>
         )}
 
-        {/* Add elements — hidden for viewers */}
-        {!isViewer && (
+        {/* Add elements — hidden for viewers, disabled for readOnly */}
+        {!isViewer && !readOnly && (
           <>
             <AddNodeDialog />
             <AddConductorDialog />
             <AddHeatLoadDialog />
           </>
         )}
+        {readOnly && (
+          <>
+            <ReadOnlyTooltip readOnly>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled>
+                <Circle className="h-3.5 w-3.5" />
+                Node
+              </Button>
+            </ReadOnlyTooltip>
+            <ReadOnlyTooltip readOnly>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled>
+                <GitBranch className="h-3.5 w-3.5" />
+                Conductor
+              </Button>
+            </ReadOnlyTooltip>
+            <ReadOnlyTooltip readOnly>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled>
+                <Flame className="h-3.5 w-3.5" />
+                Heat Load
+              </Button>
+            </ReadOnlyTooltip>
+          </>
+        )}
 
         {!isViewer && <Separator orientation="vertical" className="h-6 mx-2" />}
 
         {/* CAD Import */}
-        {!isViewer && <ImportCadButton />}
+        {!isViewer && !readOnly && <ImportCadButton />}
+        {readOnly && (
+          <ReadOnlyTooltip readOnly>
+            <Button variant="ghost" size="sm" className="gap-1.5 text-xs" disabled>
+              Import CAD
+            </Button>
+          </ReadOnlyTooltip>
+        )}
 
         <Separator orientation="vertical" className="h-6 mx-2" />
 
         {/* Undo/Redo */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={undo}
-              disabled={!canUndo}
-            >
-              <Undo2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
-        </Tooltip>
+        <ReadOnlyTooltip readOnly={readOnly}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={readOnly ? undefined : undo}
+                disabled={readOnly || !canUndo}
+              >
+                <Undo2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            {!readOnly && <TooltipContent>Undo (Ctrl+Z)</TooltipContent>}
+          </Tooltip>
+        </ReadOnlyTooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={redo}
-              disabled={!canRedo}
-            >
-              <Redo2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>
-        </Tooltip>
+        <ReadOnlyTooltip readOnly={readOnly}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={readOnly ? undefined : redo}
+                disabled={readOnly || !canRedo}
+              >
+                <Redo2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            {!readOnly && <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>}
+          </Tooltip>
+        </ReadOnlyTooltip>
 
         {/* History panel toggle */}
         <Tooltip>
@@ -252,23 +305,25 @@ export function Toolbar({ projectId, role }: ToolbarProps) {
         </Tooltip>
 
         {/* Save */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSave}
-              disabled={!isDirty || isSaving}
-            >
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Save (Ctrl+S)</TooltipContent>
-        </Tooltip>
+        <ReadOnlyTooltip readOnly={readOnly}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={readOnly ? undefined : handleSave}
+                disabled={readOnly || !isDirty || isSaving}
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            {!readOnly && <TooltipContent>Save (Ctrl+S)</TooltipContent>}
+          </Tooltip>
+        </ReadOnlyTooltip>
 
         <Separator orientation="vertical" className="h-6 mx-2" />
 
@@ -331,27 +386,29 @@ export function Toolbar({ projectId, role }: ToolbarProps) {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Run Simulation — hidden for viewers */}
+        {/* Run Simulation — hidden for viewers, disabled for readOnly */}
         {!isViewer && (
-          <Button
-            variant="glow-orange"
-            size="default"
-            className="gap-2"
-            onClick={handleRunSimulation}
-            disabled={simulationStatus === 'running'}
-          >
-            {simulationStatus === 'running' ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Running...
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4" />
-                Run Simulation
-              </>
-            )}
-          </Button>
+          <ReadOnlyTooltip readOnly={readOnly}>
+            <Button
+              variant="glow-orange"
+              size="default"
+              className="gap-2"
+              onClick={readOnly ? undefined : handleRunSimulation}
+              disabled={readOnly || simulationStatus === 'running'}
+            >
+              {simulationStatus === 'running' ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  Run Simulation
+                </>
+              )}
+            </Button>
+          </ReadOnlyTooltip>
         )}
       </motion.div>
 

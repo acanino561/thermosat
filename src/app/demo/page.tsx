@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { useTimelineStore } from '@/lib/stores/timeline-store';
-import { DemoEditorLayout } from '@/components/editor/demo-editor-layout';
+import { EditorLayout } from '@/components/editor/editor-layout';
 import {
   nodeProfiles,
   conductorFlows,
@@ -242,5 +242,5 @@ function useSeedDemoData() {
 export default function DemoPage() {
   useSeedDemoData();
 
-  return <DemoEditorLayout />;
+  return <EditorLayout projectId="demo" modelId="demo-cubesat-6u" readOnly />;
 }
