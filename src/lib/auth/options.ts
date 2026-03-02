@@ -9,6 +9,8 @@ import { eq, and, isNull } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import type { Adapter } from 'next-auth/adapters';
 import { checkRateLimit, recordFailedAttempt } from './rate-limit';
+import { requiresLicense, getLicenseStatus } from '@/lib/license/validate';
+import { acquireSeat } from '@/lib/license/seats';
 
 let _authOptions: NextAuthOptions | null = null;
 
@@ -83,10 +85,24 @@ export function getAuthOptions(): NextAuthOptions {
           }
           return session;
         },
-        jwt({ token, user }) {
+        async jwt({ token, user }) {
           if (user) {
             token.sub = user.id;
           }
+
+          // Seat enforcement for on-premise deployments
+          if (token.sub && requiresLicense()) {
+            const status = await getLicenseStatus();
+            if (status.valid && status.seats) {
+              const acquired = acquireSeat(token.sub, status.seats);
+              if (!acquired) {
+                throw new Error(
+                  'All licensed seats are in use. Contact your administrator or upgrade your license.'
+                );
+              }
+            }
+          }
+
           return token;
         },
       },
