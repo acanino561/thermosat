@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId;
-      const tier = session.metadata?.tier;
+      const rawTier = session.metadata?.tier;
+      const tier = rawTier === 'team' ? 'pro' : rawTier;
       const orgId = session.metadata?.orgId;
       const customerId = extractId(session.customer as string | null);
       const subscriptionId = extractId(session.subscription as string | null);
