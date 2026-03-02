@@ -1,3 +1,4 @@
+// @deprecated — use EditorLayout with readOnly={true} instead
 'use client';
 
 import { useEditorStore } from '@/lib/stores/editor-store';

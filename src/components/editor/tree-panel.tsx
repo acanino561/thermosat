@@ -31,7 +31,11 @@ const nodeTypeColors = {
   boundary: 'text-accent-orange',
 };
 
-export function TreePanel() {
+interface TreePanelProps {
+  readOnly?: boolean;
+}
+
+export function TreePanel({ readOnly }: TreePanelProps = {}) {
   const {
     nodes,
     conductors,
@@ -93,14 +97,15 @@ export function TreePanel() {
                         <ContextMenuItem onClick={() => selectNode(node.id)}>
                           Select
                         </ContextMenuItem>
-                        <ContextMenuItem>
+                        <ContextMenuItem disabled={readOnly}>
                           <Copy className="h-3.5 w-3.5 mr-2" />
                           Duplicate
                         </ContextMenuItem>
                         <ContextMenuSeparator />
                         <ContextMenuItem
-                          className="text-red-400"
-                          onClick={() => deleteNode(node.id)}
+                          className={readOnly ? 'text-muted-foreground' : 'text-red-400'}
+                          disabled={readOnly}
+                          onClick={readOnly ? undefined : () => deleteNode(node.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-2" />
                           Delete
@@ -149,8 +154,9 @@ export function TreePanel() {
                         </ContextMenuItem>
                         <ContextMenuSeparator />
                         <ContextMenuItem
-                          className="text-red-400"
-                          onClick={() => deleteConductor(cond.id)}
+                          className={readOnly ? 'text-muted-foreground' : 'text-red-400'}
+                          disabled={readOnly}
+                          onClick={readOnly ? undefined : () => deleteConductor(cond.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-2" />
                           Delete
@@ -204,8 +210,9 @@ export function TreePanel() {
                         </ContextMenuItem>
                         <ContextMenuSeparator />
                         <ContextMenuItem
-                          className="text-red-400"
-                          onClick={() => deleteHeatLoad(hl.id)}
+                          className={readOnly ? 'text-muted-foreground' : 'text-red-400'}
+                          disabled={readOnly}
+                          onClick={readOnly ? undefined : () => deleteHeatLoad(hl.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-2" />
                           Delete

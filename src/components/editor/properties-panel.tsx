@@ -16,7 +16,11 @@ import { DesignSpaceChart } from '@/components/results/design-space-chart';
 import { DesignSpaceResultsTable } from '@/components/results/design-space-results-table';
 import type { ExplorationSampleResult, ExplorationParameter } from '@/lib/solver/design-space';
 
-export function PropertiesPanel() {
+interface PropertiesPanelProps {
+  readOnly?: boolean;
+}
+
+export function PropertiesPanel({ readOnly }: PropertiesPanelProps = {}) {
   const [failureModalOpen, setFailureModalOpen] = useState(false);
   const [failureAnalysisId, setFailureAnalysisId] = useState<string | null>(null);
   const [explorationId, setExplorationId] = useState<string | null>(null);
@@ -54,6 +58,15 @@ export function PropertiesPanel() {
       </div>
       <ScrollArea className="flex-1">
         <div className="p-4">
+          {readOnly && (
+            <div className="mb-3 font-mono text-[10px]" style={{ color: 'var(--tc-text-muted, #64748b)' }}>
+              Read-only demo —{' '}
+              <a href="/signup" className="text-cyan-400 hover:underline">
+                sign up to edit
+              </a>
+            </div>
+          )}
+          <fieldset disabled={readOnly} className={readOnly ? 'opacity-80' : ''}>
           {selectedNode ? (
             <NodeProperties node={selectedNode} />
           ) : selectedConductor ? (
@@ -63,9 +76,10 @@ export function PropertiesPanel() {
           ) : (
             <ModelOverview />
           )}
+          </fieldset>
 
-          {/* What If panel — visible when results overlay is active */}
-          {showResultsOverlay && simulationResults && projectId && modelId && (
+          {/* What If panel — visible when results overlay is active (not in readOnly/demo mode) */}
+          {!readOnly && showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <WhatIfPanel
                 projectId={projectId}
@@ -75,8 +89,8 @@ export function PropertiesPanel() {
             </div>
           )}
 
-          {/* Failure Mode Analysis panel */}
-          {showResultsOverlay && simulationResults && projectId && modelId && (
+          {/* Failure Mode Analysis panel — not in readOnly/demo mode */}
+          {!readOnly && showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <FailureModePanel
                 open={failureModalOpen}
@@ -96,7 +110,7 @@ export function PropertiesPanel() {
           )}
 
           {/* Design Space Explorer */}
-          {showResultsOverlay && simulationResults && projectId && modelId && (
+          {!readOnly && showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <DesignSpaceSetup
                 projectId={projectId}
@@ -118,7 +132,7 @@ export function PropertiesPanel() {
           )}
 
           {/* Design Space Explorer */}
-          {showResultsOverlay && simulationResults && projectId && modelId && (
+          {!readOnly && showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <DesignSpaceSetup
                 projectId={projectId}

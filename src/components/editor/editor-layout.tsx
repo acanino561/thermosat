@@ -29,24 +29,28 @@ const Viewport3D = dynamic(
 interface EditorLayoutProps {
   projectId: string;
   modelId: string;
+  readOnly?: boolean;
 }
 
-export function EditorLayout({ projectId, modelId }: EditorLayoutProps) {
+export function EditorLayout({ projectId, modelId, readOnly }: EditorLayoutProps) {
   const loadModel = useEditorStore((s) => s.loadModel);
   const activeView = useEditorStore((s) => s.activeView);
   const setActiveView = useEditorStore((s) => s.setActiveView);
 
   useEffect(() => {
-    loadModel(projectId, modelId);
-  }, [projectId, modelId, loadModel]);
+    // Skip API load when readOnly — data is pre-seeded by the caller
+    if (!readOnly) {
+      loadModel(projectId, modelId);
+    }
+  }, [projectId, modelId, loadModel, readOnly]);
 
   return (
     <div className="h-screen flex flex-col bg-space-base overflow-hidden">
-      <Toolbar projectId={projectId} />
+      <Toolbar projectId={projectId} readOnly={readOnly} />
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel — Model Tree */}
         <div className="w-56 lg:w-64 shrink-0">
-          <TreePanel />
+          <TreePanel readOnly={readOnly} />
         </div>
 
         {/* Center — Viewport with tabs */}
@@ -76,13 +80,13 @@ export function EditorLayout({ projectId, modelId }: EditorLayoutProps) {
 
           {/* Active view */}
           <div className="flex-1 min-h-0">
-            {activeView === '3d' ? <Viewport3D /> : <NetworkGraph />}
+            {activeView === '3d' ? <Viewport3D /> : <NetworkGraph readOnly={readOnly} />}
           </div>
         </div>
 
         {/* Right panel — Properties */}
         <div className="w-64 lg:w-80 shrink-0">
-          <PropertiesPanel />
+          <PropertiesPanel readOnly={readOnly} />
         </div>
       </div>
     </div>
