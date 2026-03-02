@@ -52,6 +52,11 @@ export async function getUserProjectAccess(
     throw new AccessDeniedError('Project not found');
   }
 
+  // Demo project — any authenticated user gets read access
+  if (project.isDemo) {
+    return 'viewer';
+  }
+
   // Personal project — only owner has access
   if (!project.orgId) {
     if (project.userId === userId) {
