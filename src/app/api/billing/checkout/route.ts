@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
     customer: customerId,
     mode: 'subscription',
     line_items: lineItems,
+    automatic_tax: { enabled: true },
     success_url: `${process.env.NEXTAUTH_URL}/dashboard/settings/billing?success=true`,
     cancel_url: `${process.env.NEXTAUTH_URL}/dashboard/settings/billing?cancelled=true`,
     metadata: {
