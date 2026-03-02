@@ -111,3 +111,29 @@ Organization owners can manage the license from **Dashboard → Admin → Licens
 ### Air-Gapped Environments
 
 No special configuration needed. License validation uses RSA signature verification against an embedded public key — **no network calls are made**. The renewal request file (`.vxlr`) contains only your org name, seat count, and a machine fingerprint (no private data). Transfer it via USB, email, or any other means.
+
+---
+
+## Keeping Verixos Updated
+
+### Checking for Updates
+
+Organization owners can check for new versions from **Dashboard → Admin → Updates**. The update checker contacts `updates.verixos.com` to compare your installed version against the latest release.
+
+### Update Procedure
+
+1. Go to **Admin → Updates** and click **Take DB Snapshot** to back up your database
+2. Click **Check for Updates** to see if a newer version is available
+3. If an update is available, run the provided command on your Docker host:
+   ```bash
+   docker compose pull && docker compose up -d
+   ```
+4. Verify the new version in the Admin → Updates page after restart
+
+### Air-Gapped Environments
+
+If your instance cannot reach the internet, check [hub.docker.com/r/verixos/app](https://hub.docker.com/r/verixos/app) for the latest image tags. Pull the image on a machine with internet access, export it with `docker save`, transfer it to your server, and load it with `docker load`.
+
+### Database Snapshots
+
+The **Take DB Snapshot** button runs `pg_dump` and saves a `.sql` file to `/tmp/` on the server. For production deployments, we recommend also setting up automated backups via `pg_dump` cron jobs or your cloud provider's snapshot feature.
