@@ -86,7 +86,7 @@ function StatusBar() {
     >
       <span className="flex items-center gap-2 shrink-0">
         <span className="status-dot" />
-        V&V: 10/10 PASSING
+        NASA SP-8055 VALIDATED
       </span>
       <span className="shrink-0" style={{ color: 'var(--tc-text-dim)' }}>│</span>
       <span className="shrink-0">SOLVER: RK4 + IMPLICIT EULER</span>
@@ -175,7 +175,7 @@ export function HeroSection() {
           style={{ color: 'var(--tc-text-muted)' }}
         >
           <span className="status-dot" />
-          TFAWS-GRADE V&V — 10/10 BENCHMARKS PASSING
+          NASA SP-8055 + ECSS VALIDATED
         </motion.div>
 
         <div className="max-w-3xl lg:max-w-[38%]">
@@ -218,7 +218,7 @@ export function HeroSection() {
           >
             <span className="text-accent opacity-60">▸</span>{' '}
             <span style={{ color: 'var(--tc-text-secondary)' }}>
-              Browser-native. Physics-accurate. Demo-ready.
+              Cloud-native. Physics-accurate. Standards-validated.
             </span>
           </motion.div>
 
@@ -230,9 +230,7 @@ export function HeroSection() {
             className="mt-6 text-base max-w-lg leading-relaxed font-sans"
             style={{ color: 'var(--tc-text-secondary)' }}
           >
-            Cloud-native spacecraft thermal analysis with RK4 and Implicit Euler solvers. 
-            Validated against analytical solutions from Incropera, NASA SP-8055, and ECSS standards 
-            — 10 out of 10 V&V benchmarks passing.
+            Cloud-native simulation for the next generation of space hardware. Validated against NASA SP-8055 and ECSS standards. Solve 1,000+ nodes in &lt;1s.
           </motion.p>
 
           {/* CTAs */}
@@ -247,7 +245,7 @@ export function HeroSection() {
               className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-6 py-3.5 transition-all duration-200 hover:shadow-[0_0_30px_rgba(var(--tc-accent-rgb),0.3)]"
               style={{ backgroundColor: 'var(--tc-accent)', color: '#fff' }}
             >
-              START FREE TRIAL
+              GET STARTED
               <span>→</span>
             </Link>
             <a
@@ -255,7 +253,7 @@ export function HeroSection() {
               className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-6 py-3.5 transition-colors duration-200 hover:text-accent"
               style={{ color: 'var(--tc-text-secondary)', border: '1px solid var(--tc-border)' }}
             >
-              WATCH DEMO
+              TRY THE DEMO
             </a>
           </motion.div>
         </div>
