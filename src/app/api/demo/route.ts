@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { projects, thermalModels, simulationRuns } from '@/lib/db/schema';

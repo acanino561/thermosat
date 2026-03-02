@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { ssoConfigs, organizations } from '@/lib/db/schema';
