@@ -166,7 +166,11 @@ export function PricingSection() {
           ))}
         </div>
 
-        <div className="mt-8 text-center">
+        <p className="mt-6 text-center font-mono text-[11px]" style={{ color: 'var(--tc-text-muted)' }}>
+          Included runs reset monthly. Overage billed at end of billing period.
+        </p>
+
+        <div className="mt-4 text-center">
           <Link
             href="/pricing"
             className="font-mono text-xs tracking-[0.15em] transition-colors duration-200 hover:text-accent"
