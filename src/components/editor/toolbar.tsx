@@ -349,11 +349,11 @@ export function Toolbar({ projectId, role, readOnly }: ToolbarProps) {
 
         <Separator orientation="vertical" className="h-6 mx-2" />
 
-        {/* Collab: Review Status */}
-        {modelId && <ReviewStatusBar modelId={modelId} />}
+        {/* Collab: Review Status — not shown in readOnly/demo mode */}
+        {modelId && !readOnly && <ReviewStatusBar modelId={modelId} />}
 
-        {/* Collab: Share */}
-        {modelId && (
+        {/* Collab: Share — not shown in readOnly/demo mode */}
+        {modelId && !readOnly && (
           <ShareDialog
             modelId={modelId}
             trigger={
@@ -420,11 +420,13 @@ export function Toolbar({ projectId, role, readOnly }: ToolbarProps) {
         <VersionHistory onClose={() => setShowVersionHistory(false)} />
       )}
 
-      {/* Simulation config dialog */}
-      <SimulationConfigDialog
-        open={showSimConfig}
-        onOpenChange={setShowSimConfig}
-      />
+      {/* Simulation config dialog — only mount when not in readOnly/demo mode */}
+      {!readOnly && (
+        <SimulationConfigDialog
+          open={showSimConfig}
+          onOpenChange={setShowSimConfig}
+        />
+      )}
 
       {/* Comments sidebar */}
       {showComments && modelId && (

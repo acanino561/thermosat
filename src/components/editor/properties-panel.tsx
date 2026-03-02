@@ -78,8 +78,8 @@ export function PropertiesPanel({ readOnly }: PropertiesPanelProps = {}) {
           )}
           </fieldset>
 
-          {/* What If panel — visible when results overlay is active */}
-          {showResultsOverlay && simulationResults && projectId && modelId && (
+          {/* What If panel — visible when results overlay is active (not in readOnly/demo mode) */}
+          {!readOnly && showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <WhatIfPanel
                 projectId={projectId}
@@ -89,8 +89,8 @@ export function PropertiesPanel({ readOnly }: PropertiesPanelProps = {}) {
             </div>
           )}
 
-          {/* Failure Mode Analysis panel */}
-          {showResultsOverlay && simulationResults && projectId && modelId && (
+          {/* Failure Mode Analysis panel — not in readOnly/demo mode */}
+          {!readOnly && showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <FailureModePanel
                 open={failureModalOpen}
@@ -110,7 +110,7 @@ export function PropertiesPanel({ readOnly }: PropertiesPanelProps = {}) {
           )}
 
           {/* Design Space Explorer */}
-          {showResultsOverlay && simulationResults && projectId && modelId && (
+          {!readOnly && showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <DesignSpaceSetup
                 projectId={projectId}
@@ -132,7 +132,7 @@ export function PropertiesPanel({ readOnly }: PropertiesPanelProps = {}) {
           )}
 
           {/* Design Space Explorer */}
-          {showResultsOverlay && simulationResults && projectId && modelId && (
+          {!readOnly && showResultsOverlay && simulationResults && projectId && modelId && (
             <div className="mt-4 pt-4 border-t border-white/10">
               <DesignSpaceSetup
                 projectId={projectId}
