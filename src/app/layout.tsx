@@ -31,11 +31,16 @@ export const metadata: Metadata = {
     'CubeSat thermal analysis',
     'spacecraft thermal software',
   ],
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/icon.png',
+  },
   openGraph: {
     title: 'Verixos — Spacecraft Thermal Analysis Software',
     description: 'Physics-accurate spacecraft thermal analysis in your browser.',
-    url: 'https://thermosat.vercel.app',
+    url: 'https://verixos.com',
     siteName: 'Verixos',
+    images: [{ url: '/logo.png', width: 3808, height: 1120, alt: 'Verixos' }],
     type: 'website',
   },
   twitter: {
