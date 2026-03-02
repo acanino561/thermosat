@@ -58,8 +58,11 @@ const UPGRADE_TIERS = [
   },
 ];
 
+export const dynamic = 'force-dynamic';
+
 export default function BillingPage() {
-  const { data: session } = useSession();
+  const sessionResult = useSession();
+  const session = sessionResult?.data;
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
