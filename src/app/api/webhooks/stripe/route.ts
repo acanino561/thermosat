@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       await db.insert(subscriptions).values({
         userId: orgId ? undefined : userId,
         orgId: orgId ?? undefined,
-        tier: tier as 'starter' | 'pro' | 'team',
+        tier: tier as 'starter' | 'pro',
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscriptionId,
         status: 'active',
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       }).onConflictDoUpdate({
         target: subscriptions.stripeSubscriptionId,
         set: {
-          tier: tier as 'starter' | 'pro' | 'team',
+          tier: tier as 'starter' | 'pro',
           status: 'active',
           currentPeriodEnd: periodEnd,
           updatedAt: new Date(),

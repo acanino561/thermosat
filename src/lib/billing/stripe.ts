@@ -11,12 +11,12 @@ export function getStripe(): Stripe {
   return _stripe;
 }
 
-type Tier = 'starter' | 'pro' | 'team';
+type Tier = 'starter' | 'pro' | 'overage';
 
 const PRICE_ENV_MAP: Record<Tier, string> = {
   starter: 'STRIPE_PRICE_STARTER_ANNUAL',
   pro: 'STRIPE_PRICE_PRO_ANNUAL',
-  team: 'STRIPE_PRICE_TEAM_SEAT_ANNUAL',
+  overage: 'STRIPE_PRICE_SIM_OVERAGE',
 };
 
 export function getPriceId(tier: Tier): string {
@@ -25,3 +25,25 @@ export function getPriceId(tier: Tier): string {
   if (!priceId) throw new Error(`${envVar} is not set`);
   return priceId;
 }
+
+export async function reportSimulationUsage(
+  subscriptionItemId: string,
+  quantity: number,
+): Promise<void> {
+  const stripe = getStripe();
+  // Stripe 2026 API uses billing.meterEvents for metered usage reporting.
+  // subscriptionItemId is passed as the event identifier for correlation.
+  await stripe.billing.meterEvents.create({
+    event_name: 'simulation_run',
+    payload: {
+      stripe_customer_id: subscriptionItemId,
+      value: String(quantity),
+    },
+  });
+}
+
+export const SIM_RUN_LIMITS: Record<'academic' | 'starter' | 'pro', number> = {
+  academic: 20,
+  starter: 50,
+  pro: 200,
+};

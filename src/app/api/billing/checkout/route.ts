@@ -20,12 +20,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { tier, orgId } = body as { tier: string; orgId?: string };
 
-  if (!['starter', 'pro', 'team'].includes(tier)) {
+  if (!['starter', 'pro'].includes(tier)) {
     return NextResponse.json({ error: 'Invalid tier' }, { status: 400 });
   }
 
   const stripe = getStripe();
-  const priceId = getPriceId(tier as 'starter' | 'pro' | 'team');
+  const priceId = getPriceId(tier as 'starter' | 'pro');
 
   // Check existing subscription for customer ID
   const existingSubs = await db
@@ -43,10 +43,10 @@ export async function POST(req: NextRequest) {
     customerId = customer.id;
   }
 
-  const lineItems: { price: string; quantity?: number }[] = [{ price: priceId }];
-  if (tier === 'team') {
-    lineItems[0].quantity = 1;
-  }
+  const lineItems: { price: string; quantity?: number }[] = [
+    { price: priceId },
+    { price: getPriceId('overage') },
+  ];
 
   const checkoutSession = await stripe.checkout.sessions.create({
     customer: customerId,
