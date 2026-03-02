@@ -54,11 +54,13 @@ async function main() {
     org,
     seats,
     tier,
+    customerId: `org:${org.toLowerCase().replace(/\s+/g, '-')}`,
+    features: ['thermal-solver', 'orbital-sim', 'reports'],
   })
     .setProtectedHeader({ alg: 'RS256' })
     .setIssuedAt(now)
     .setExpirationTime(exp)
-    .setIssuer('aurora:licensing')
+    .setIssuer('verixos:licensing')
     .setSubject(`org:${org.toLowerCase().replace(/\s+/g, '-')}`)
     .sign(privateKey);
 

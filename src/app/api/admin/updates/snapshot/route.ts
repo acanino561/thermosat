@@ -5,10 +5,10 @@ import { db } from '@/lib/db/client';
 import { orgMembers, users } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requiresLicense } from '@/lib/license/validate';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export async function POST(_req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -37,7 +37,11 @@ export async function POST(_req: NextRequest) {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const outPath = `/tmp/verixos-backup-${timestamp}.sql`;
-    await execAsync(`pg_dump "${process.env.DATABASE_URL}" -f "${outPath}"`, { timeout: 60000 });
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+    await execFileAsync('pg_dump', ['--dbname', dbUrl, '-f', outPath], { timeout: 60000 });
 
     return NextResponse.json({ success: true, snapshotPath: outPath, timestamp });
   } catch (err) {

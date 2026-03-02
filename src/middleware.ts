@@ -18,20 +18,15 @@ export async function middleware(request: NextRequest) {
   // We do a lightweight JWT check here using jose (edge-compatible)
   const { jwtVerify, importSPKI } = await import('jose');
 
-  const LICENSE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwNdR/c8QHoosixZ0WNAk
-V2FsnkaF/RHlMKoXmCFWGmrZwBmzXLlNkhIiM8WyEa2VuGJD2iKBkjenR/m/+Cv9
-zcCw/pZn5Ny4cpQ6Fj5EY29WGo52smAHbeCsjSt2QVu4SunETlQNcgUcTMIj7D3H
-iDBHK6isureJf55MTq9oYTc9CDjxo7/di5C0r1uVF9xzPvwqoLDs0YtzisTxAbKi
-U+z0S3FzL7G8+UmMyjhZHSiUXLyesR1AMTDD6HJsv9v6GKTLl+kpkOpUatCsZTGK
-3ZYVoyZljlg0S7Yn3sqjJQ4fbuNlEgxFCzsqTdM+5TAHCR9f5jxD7v0Q8hbNoaKn
-lQIDAQAB
------END PUBLIC KEY-----`;
+  const licensePublicKeyPem = process.env.LICENSE_PUBLIC_KEY;
+  if (!licensePublicKeyPem) {
+    throw new Error('LICENSE_PUBLIC_KEY environment variable is not set');
+  }
 
   try {
-    const key = await importSPKI(LICENSE_PUBLIC_KEY, 'RS256');
+    const key = await importSPKI(licensePublicKeyPem, 'RS256');
     const { payload } = await jwtVerify(process.env.VERIXOS_LICENSE_KEY, key, {
-      issuer: 'verixos-licensing',
+      issuer: 'verixos:licensing',
     });
 
     const exp = payload.exp as number;

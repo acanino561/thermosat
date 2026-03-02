@@ -2,21 +2,14 @@ import * as jose from 'jose';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-// RSA public key for license verification (matches the private key used to sign .vxlic files)
-const LICENSE_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Z3VS5JJcds3xfn/ygWe
-HKbJSMzEwOIFnZJkGp3S1KBmATMkGsKMnuR2Iv9FLHGQsaN/4E0aMkhVU1yPaQp
-NKSkvBLiJYBBShFGjmOAJMFjKNzQTEmiTZbJz3LkXx2JyEHbMDkMK0TF4tUdNOxR
-eLRGnfJMUCG07cPmBkjOX+MH1WhN+sBgTMyOr20uRUiNYiL8SDpCAlhaJp7jkr5m
-HAeKQjOKFr0i/oqnWqJxz2CAYJ79MH4JRQW6TeGBXHLCDP4FHmBqxOOvh0GYfT/A
-QKaGUVRsBzNCm9PNXJV0GrjRYPqGhNbjkMVYlHC0+MCGfKBWqMiZLDHxjfjyDOCF
-2wIDAQAB
------END PUBLIC KEY-----`;
+
 
 export interface LicensePayload {
   org: string;
   seats: number;
   tier: 'starter' | 'pro' | 'team' | 'enterprise';
+  customerId: string;
+  features: string[];
   exp: number;
   iat: number;
   iss: string;
@@ -121,9 +114,13 @@ function resolveLicenseKey(): { key: string; source: LicenseStatus['source'] } |
  */
 export async function validateLicenseKey(jwt: string): Promise<LicenseStatus> {
   try {
-    const publicKey = await jose.importSPKI(LICENSE_PUBLIC_KEY, 'RS256');
+    const licensePublicKeyPem = process.env.LICENSE_PUBLIC_KEY;
+    if (!licensePublicKeyPem) {
+      throw new Error('LICENSE_PUBLIC_KEY environment variable is not set');
+    }
+    const publicKey = await jose.importSPKI(licensePublicKeyPem, 'RS256');
     const { payload } = await jose.jwtVerify(jwt, publicKey, {
-      issuer: 'aurora:licensing',
+      issuer: 'verixos:licensing',
     });
 
     const licensePayload = payload as unknown as LicensePayload;

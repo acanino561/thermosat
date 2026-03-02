@@ -30,9 +30,11 @@ async function main() {
     org: 'Verixos Development',
     seats: 5,
     tier: 'enterprise',
+    customerId: 'test-customer-001',
+    features: ['thermal-solver', 'orbital-sim', 'reports'],
   })
     .setProtectedHeader({ alg: 'RS256' })
-    .setIssuer('verixos-licensing')
+    .setIssuer('verixos:licensing')
     .setIssuedAt(now)
     .setExpirationTime(now + thirtyDays)
     .sign(privateKey);

@@ -45,8 +45,11 @@ export async function GET(_req: NextRequest) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const res = await fetch('https://updates.verixos.com/api/v1/latest', {
+    const res = await fetch('https://api.github.com/repos/acanino561/thermosat/releases/latest', {
       signal: controller.signal,
+      headers: {
+        'User-Agent': 'verixos-app',
+      },
     });
     clearTimeout(timeout);
 
@@ -55,16 +58,15 @@ export async function GET(_req: NextRequest) {
     }
 
     const data = await res.json();
-    const latestVersion = data.version as string;
+    const latestVersion = (data.tag_name as string).replace(/^v/, '');
     const available = compareSemver(latestVersion, APP_VERSION) > 0;
 
     return NextResponse.json({
       available,
       currentVersion: APP_VERSION,
       latestVersion,
-      releaseDate: data.releaseDate ?? null,
-      changelog: data.changelog ?? null,
-      imageTag: data.imageTag ?? null,
+      releaseNotes: data.body ?? null,
+      url: data.html_url ?? null,
       updateCommand: available ? 'docker compose pull && docker compose up -d' : undefined,
     });
   } catch {
