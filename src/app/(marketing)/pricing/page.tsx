@@ -13,7 +13,7 @@ const tiers = [
     period: '',
     description: 'For students and academic research. Requires .edu email or manual review.',
     features: [
-      '1 user',
+      '20 simulation runs/month',
       'Up to 25 thermal nodes',
       '1 active model',
       'All physics solvers',
@@ -30,7 +30,8 @@ const tiers = [
     period: '/year',
     description: 'For university groups and startup missions getting started with thermal analysis.',
     features: [
-      '1 user',
+      '50 simulation runs/month',
+      '$8/run overage',
       '10 projects',
       'RK4 + Implicit Euler solver',
       'CSV & JSON export',
@@ -47,7 +48,8 @@ const tiers = [
     period: '/year',
     description: 'For engineering teams who need unlimited capability and V&V benchmarks.',
     features: [
-      '5 users',
+      '200 simulation runs/month',
+      '$8/run overage',
       'Unlimited projects',
       'All export formats (CSV, JSON, PDF)',
       'Orbit playback with shadow mapping',
@@ -67,6 +69,7 @@ const tiers = [
     description: 'For prime contractors and agencies requiring dedicated infrastructure and support.',
     features: [
       'Everything in Professional',
+      'Unlimited simulation runs',
       'Unlimited users',
       'On-premise deployment option',
       'Full API access & SDKs',
@@ -173,6 +176,13 @@ export default function PricingPage() {
             </div>
           ))}
         </div>
+
+        <p
+          className="mt-6 font-mono text-xs"
+          style={{ color: 'var(--tc-text-muted)' }}
+        >
+          Included runs reset monthly. Overage billed at end of billing period.
+        </p>
       </div>
     </div>
   );
