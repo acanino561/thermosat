@@ -71,3 +71,43 @@ MinIO + Postgres + Next.js needs ~1.5GB minimum. Increase Docker's memory limit.
 docker compose logs -f verixos-app
 docker compose logs -f verixos-db
 ```
+
+## License Management
+
+Verixos on-premise requires a valid license. License validation is **fully local** — no internet connection is required at any point. The license is a signed JWT verified with an embedded public key.
+
+### Initial Setup
+
+Set your license key using **one** of these methods (checked in priority order):
+
+1. **Environment variable** — set `VERIXOS_LICENSE_KEY` in your `.env` or `docker-compose.yml`:
+   ```bash
+   VERIXOS_LICENSE_KEY=eyJhbGciOiJSUzI1NiIs...
+   ```
+
+2. **System-level file** — place your `.vxlic` file at:
+   - Linux: `/etc/verixos/license.vxlic`
+   - Windows: `C:\ProgramData\Verixos\license.vxlic`
+
+3. **Local file** — place `license.vxlic` in the application's working directory
+
+### Admin UI
+
+Organization owners can manage the license from **Dashboard → Admin → License**:
+
+- View current license status (org, tier, seats, expiry)
+- Upload a new `.vxlic` file (applies immediately, persists until restart)
+- Download a renewal request file (`.vxlr`)
+
+### Annual Renewal
+
+1. Go to **Admin → License** in the dashboard
+2. Click **Download Renewal Request** to generate a `.vxlr` file
+3. Email the `.vxlr` file to `licensing@verixos.com`
+4. You'll receive a new `.vxlic` license file
+5. Upload it via the Admin UI, or replace the file at `/etc/verixos/license.vxlic`
+6. For persistence across restarts, update `VERIXOS_LICENSE_KEY` in your `.env` file
+
+### Air-Gapped Environments
+
+No special configuration needed. License validation uses RSA signature verification against an embedded public key — **no network calls are made**. The renewal request file (`.vxlr`) contains only your org name, seat count, and a machine fingerprint (no private data). Transfer it via USB, email, or any other means.
