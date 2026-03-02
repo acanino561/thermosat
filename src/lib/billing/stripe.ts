@@ -27,16 +27,14 @@ export function getPriceId(tier: Tier): string {
 }
 
 export async function reportSimulationUsage(
-  subscriptionItemId: string,
+  stripeCustomerId: string,
   quantity: number,
 ): Promise<void> {
   const stripe = getStripe();
-  // Stripe 2026 API uses billing.meterEvents for metered usage reporting.
-  // subscriptionItemId is passed as the event identifier for correlation.
   await stripe.billing.meterEvents.create({
     event_name: 'simulation_run',
     payload: {
-      stripe_customer_id: subscriptionItemId,
+      stripe_customer_id: stripeCustomerId,
       value: String(quantity),
     },
   });
