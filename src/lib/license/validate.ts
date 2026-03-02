@@ -7,7 +7,7 @@ import { join } from 'path';
 export interface LicensePayload {
   org: string;
   seats: number;
-  tier: 'starter' | 'pro' | 'team' | 'enterprise';
+  tier: 'starter' | 'pro' | 'enterprise';
   customerId: string;
   features: string[];
   exp: number;

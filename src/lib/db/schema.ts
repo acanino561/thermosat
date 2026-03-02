@@ -62,7 +62,6 @@ export const subscriptionTierEnum = pgEnum('subscription_tier', [
   'academic',
   'starter',
   'pro',
-  'team',
   'enterprise',
 ]);
 
@@ -1012,6 +1011,8 @@ export const subscriptions = pgTable(
     status: text('status').notNull().default('active'),
     currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }),
     seatCount: integer('seat_count').notNull().default(1),
+    simRunsUsed: integer('sim_runs_used').notNull().default(0),
+    simRunsResetAt: timestamp('sim_runs_reset_at', { mode: 'date' }),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
