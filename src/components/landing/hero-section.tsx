@@ -243,7 +243,7 @@ export function HeroSection() {
             className="mt-10 flex flex-wrap items-center gap-4"
           >
             <Link
-              href="/auth/signin"
+              href="/login"
               className="inline-flex items-center gap-2 font-mono text-xs tracking-[0.15em] px-6 py-3.5 transition-all duration-200 hover:shadow-[0_0_30px_rgba(var(--tc-accent-rgb),0.3)]"
               style={{ backgroundColor: 'var(--tc-accent)', color: '#fff' }}
             >

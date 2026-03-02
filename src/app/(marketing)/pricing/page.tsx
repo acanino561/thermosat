@@ -8,6 +8,23 @@ export const metadata: Metadata = {
 
 const tiers = [
   {
+    name: 'Academic',
+    price: 'Free',
+    period: '',
+    description: 'For students and academic research. Requires .edu email or manual review.',
+    features: [
+      '1 user',
+      'Up to 25 thermal nodes',
+      '1 active model',
+      'All physics solvers',
+      'TFAWS-standard benchmarks',
+      'No API access',
+    ],
+    cta: 'Apply for Access',
+    href: 'mailto:hello@verixos.com?subject=Academic Access Request',
+    highlighted: false,
+  },
+  {
     name: 'Starter',
     price: '$2,000',
     period: '/year',
@@ -21,7 +38,7 @@ const tiers = [
       'Standard material library',
     ],
     cta: 'Get Started',
-    href: '/auth/signin',
+    href: '/login',
     highlighted: false,
   },
   {
@@ -40,7 +57,7 @@ const tiers = [
       'Full material database',
     ],
     cta: 'Start Free Trial',
-    href: '/auth/signin',
+    href: '/login',
     highlighted: true,
   },
   {

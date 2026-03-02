@@ -9,7 +9,7 @@ import Link from 'next/link';
 const navLinks = [
   { label: 'FEATURES', href: '#features' },
   { label: 'PRICING', href: '#pricing' },
-  { label: 'SIGN IN', href: '/auth/signin' },
+  { label: 'SIGN IN', href: '/login' },
 ];
 
 function MissionClock() {
@@ -77,7 +77,7 @@ export function Navbar() {
             <MissionClock />
             <div className="w-px h-4" style={{ backgroundColor: 'var(--tc-border)' }} />
             <Link
-              href="/auth/signin"
+              href="/login"
               className="font-mono text-[11px] tracking-[0.15em] px-4 py-2 transition-all duration-200 hover:shadow-[0_0_20px_rgba(var(--tc-accent-rgb),0.3)]"
               style={{
                 backgroundColor: 'var(--tc-accent)',
@@ -125,7 +125,7 @@ export function Navbar() {
               ))}
               <div className="mt-4 pt-4 flex flex-col gap-2" style={{ borderTop: '1px solid var(--tc-border)' }}>
                 <Link
-                  href="/auth/signin"
+                  href="/login"
                   className="font-mono text-xs tracking-[0.15em] py-3 px-4 text-center"
                   style={{ backgroundColor: 'var(--tc-accent)', color: '#fff' }}
                 >

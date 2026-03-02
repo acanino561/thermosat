@@ -8,7 +8,7 @@ const plans = [
     name: 'ACADEMIC',
     price: 'FREE',
     period: '',
-    desc: 'Students who learn Verixos today join Rocket Lab, ISRO, and NASA tomorrow. The academic flywheel — free now, industry-standard later.',
+    desc: 'For students and academic research. Requires .edu email or manual review.',
     specs: [
       { key: 'NODES', value: 'Up to 25' },
       { key: 'MODELS', value: '1 active' },
@@ -32,7 +32,7 @@ const plans = [
       { key: 'SUPPORT', value: 'Email' },
     ],
     cta: 'GET STARTED',
-    href: '/auth/signin',
+    href: '/login',
     primary: false,
   },
   {
@@ -47,7 +47,7 @@ const plans = [
       { key: 'SUPPORT', value: 'Priority' },
     ],
     cta: 'START FREE TRIAL',
-    href: '/auth/signin',
+    href: '/login',
     primary: true,
   },
   {
