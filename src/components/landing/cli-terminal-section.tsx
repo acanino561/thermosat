@@ -254,6 +254,60 @@ export function CliTerminalSection() {
             >
               REST API available today. CLI shipping Q2 2026.
             </small>
+
+            {/* MCP callout */}
+            <div
+              style={{
+                border: '1px solid var(--tc-border)',
+                borderLeft: '2px solid var(--tc-accent)',
+                background: 'var(--tc-surface)',
+                padding: '12px 16px',
+                marginTop: 24,
+              }}
+            >
+              <span
+                className="font-mono text-[10px] tracking-[0.15em]"
+                style={{ color: 'var(--tc-accent)', fontVariant: 'all-small-caps' }}
+              >
+                [MCP]
+              </span>
+              <span
+                className="font-mono text-[10px] ml-2"
+                style={{ color: 'var(--tc-text-secondary)' }}
+              >
+                verixos-mcp available
+              </span>
+
+              <p
+                className="text-xs font-sans leading-relaxed mt-2"
+                style={{ color: 'var(--tc-text-secondary)' }}
+              >
+                Connect any MCP-compatible AI agent — Claude, Cursor, Copilot —
+                directly to your thermal solver.
+              </p>
+              <p
+                className="text-xs font-sans leading-relaxed mt-2"
+                style={{ color: 'var(--tc-text-secondary)' }}
+              >
+                Run parametric sweeps from your coding environment. Iterate on
+                material selection, orbit parameters, and geometry without
+                leaving your editor.
+              </p>
+              <p className="mt-3">
+                <code
+                  className="font-mono text-xs"
+                  style={{ color: 'var(--tc-accent)' }}
+                >
+                  npm install -g verixos-mcp
+                </code>
+                <span
+                  className="text-xs font-sans ml-3"
+                  style={{ color: 'var(--tc-text-muted)' }}
+                >
+                  (shipping Q2 2026)
+                </span>
+              </p>
+            </div>
           </motion.div>
 
           {/* Right column — 55% terminal */}

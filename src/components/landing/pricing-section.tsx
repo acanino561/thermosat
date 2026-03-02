@@ -10,6 +10,7 @@ const plans = [
     period: '',
     desc: 'For students and academic research. Requires .edu email or manual review.',
     specs: [
+      { key: 'RUNS/MO', value: '20' },
       { key: 'NODES', value: 'Up to 25' },
       { key: 'MODELS', value: '1 active' },
       { key: 'SOLVERS', value: 'All physics' },
@@ -27,7 +28,8 @@ const plans = [
     period: '/year',
     desc: 'For university groups and startup missions',
     specs: [
-      { key: 'USERS', value: '1' },
+      { key: 'RUNS/MO', value: '50' },
+      { key: 'OVERAGE', value: '$8/run' },
       { key: 'PROJECTS', value: '10' },
       { key: 'SUPPORT', value: 'Email' },
     ],
@@ -41,7 +43,8 @@ const plans = [
     period: '/year',
     desc: 'For engineering teams',
     specs: [
-      { key: 'USERS', value: '5' },
+      { key: 'RUNS/MO', value: '200' },
+      { key: 'OVERAGE', value: '$8/run' },
       { key: 'PROJECTS', value: 'Unlimited' },
       { key: 'V&V', value: 'Benchmark suite' },
       { key: 'SUPPORT', value: 'Priority' },
@@ -56,7 +59,7 @@ const plans = [
     period: '',
     desc: 'For prime contractors and agencies',
     specs: [
-      { key: 'USERS', value: 'Unlimited' },
+      { key: 'RUNS/MO', value: 'Unlimited' },
       { key: 'DEPLOY', value: 'On-prem option' },
       { key: 'API', value: 'Full access' },
       { key: 'SUPPORT', value: 'Dedicated engineer' },
