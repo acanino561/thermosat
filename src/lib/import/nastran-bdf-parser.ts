@@ -267,9 +267,9 @@ function parseMat4(fields: string[]): BdfMat4 {
   return {
     mid: int(fields[1]),
     k: num(fields[2]),
-    cp: num(fields[4]),
-    rho: num(fields[5]),
-    h: num(fields[3]) || undefined,
+    cp: num(fields[3]),
+    rho: num(fields[4]),
+    h: num(fields[5]) || undefined,
     mu: num(fields[6]) || undefined,
     hgen: num(fields[7]) || undefined,
     refEnthalpy: num(fields[8]) || undefined,

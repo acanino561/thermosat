@@ -114,7 +114,7 @@ CEND
 BEGIN BULK
 GRID,1,,0.0,0.0,0.0
 GRID           2               0.1     0.0     0.0
-MAT4,1,100.0,,400.0,8000.0
+MAT4,1,100.0,400.0,8000.0
 SPC            1       1       3   273.0
 ENDDATA`;
   const result = parseBdf(content);
@@ -188,7 +188,7 @@ console.log('\n=== Test 5: Edge cases ===');
   const commentsOnly = parseBdf('$ Just a comment\n$ Another comment');
   assertEqual(commentsOnly.grids.length, 0, 'Comments only → 0 grids');
 
-  const noGrids = parseBdf('BEGIN BULK\nMAT4,1,100.0,,500.0,8000.0\nENDDATA');
+  const noGrids = parseBdf('BEGIN BULK\nMAT4,1,100.0,500.0,8000.0\nENDDATA');
   assertEqual(noGrids.mat4.length, 1, 'No grids but MAT4 still parsed');
   assertEqual(noGrids.grids.length, 0, 'No grids in file');
 }

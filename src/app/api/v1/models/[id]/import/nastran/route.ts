@@ -102,9 +102,72 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
       .where(eq(thermalNodes.modelId, modelId));
 
     if (existingNodes.length > 0 && mode === 'replace') {
-      // Delete existing model data (cascading from nodes handles conductors via FK)
-      await db.delete(conductors).where(eq(conductors.modelId, modelId));
-      await db.delete(thermalNodes).where(eq(thermalNodes.modelId, modelId));
+      // Replace mode: delete all existing data and re-insert in a transaction
+      await db.transaction(async (tx) => {
+        // Delete existing model data
+        await tx.delete(conductors).where(eq(conductors.modelId, modelId));
+        await tx.delete(thermalNodes).where(eq(thermalNodes.modelId, modelId));
+        await tx.delete(materials).where(eq(materials.projectId, model.projectId));
+
+        // Insert materials
+        if (mapped.materials.length > 0) {
+          await tx.insert(materials).values(
+            mapped.materials.map((m) => ({
+              id: m.id,
+              name: m.name,
+              category: m.category,
+              absorptivity: m.absorptivity,
+              emissivity: m.emissivity,
+              conductivity: m.conductivity,
+              specificHeat: m.specificHeat,
+              density: m.density,
+              tempRangeMin: m.tempRangeMin,
+              tempRangeMax: m.tempRangeMax,
+              isDefault: m.isDefault,
+              userId: m.userId,
+              projectId: m.projectId,
+            })),
+          );
+        }
+
+        // Insert nodes
+        if (mapped.nodes.length > 0) {
+          await tx.insert(thermalNodes).values(
+            mapped.nodes.map((n) => ({
+              id: n.id,
+              modelId: n.modelId,
+              name: n.name,
+              nodeType: n.nodeType,
+              temperature: n.temperature,
+              capacitance: n.capacitance,
+              boundaryTemp: n.boundaryTemp,
+              materialId: n.materialId,
+              area: n.area,
+              mass: n.mass,
+              absorptivity: n.absorptivity,
+              emissivity: n.emissivity,
+            })),
+          );
+        }
+
+        // Insert conductors
+        if (mapped.conductors.length > 0) {
+          await tx.insert(conductors).values(
+            mapped.conductors.map((c) => ({
+              id: c.id,
+              modelId: c.modelId,
+              name: c.name,
+              conductorType: c.conductorType,
+              nodeFromId: c.nodeFromId,
+              nodeToId: c.nodeToId,
+              conductance: c.conductance,
+              area: c.area,
+              viewFactor: c.viewFactor,
+              emissivity: c.emissivity,
+            })),
+          );
+        }
+      });
     } else if (existingNodes.length > 0 && mode !== 'append') {
       return NextResponse.json(
         {
@@ -113,65 +176,63 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
         },
         { status: 409 },
       );
-    }
+    } else {
+      // Append mode or no existing data: just insert
+      if (mapped.materials.length > 0) {
+        await db.insert(materials).values(
+          mapped.materials.map((m) => ({
+            id: m.id,
+            name: m.name,
+            category: m.category,
+            absorptivity: m.absorptivity,
+            emissivity: m.emissivity,
+            conductivity: m.conductivity,
+            specificHeat: m.specificHeat,
+            density: m.density,
+            tempRangeMin: m.tempRangeMin,
+            tempRangeMax: m.tempRangeMax,
+            isDefault: m.isDefault,
+            userId: m.userId,
+            projectId: m.projectId,
+          })),
+        );
+      }
 
-    // Insert materials
-    if (mapped.materials.length > 0) {
-      await db.insert(materials).values(
-        mapped.materials.map((m) => ({
-          id: m.id,
-          name: m.name,
-          category: m.category,
-          absorptivity: m.absorptivity,
-          emissivity: m.emissivity,
-          conductivity: m.conductivity,
-          specificHeat: m.specificHeat,
-          density: m.density,
-          tempRangeMin: m.tempRangeMin,
-          tempRangeMax: m.tempRangeMax,
-          isDefault: m.isDefault,
-          userId: m.userId,
-          projectId: m.projectId,
-        })),
-      );
-    }
+      if (mapped.nodes.length > 0) {
+        await db.insert(thermalNodes).values(
+          mapped.nodes.map((n) => ({
+            id: n.id,
+            modelId: n.modelId,
+            name: n.name,
+            nodeType: n.nodeType,
+            temperature: n.temperature,
+            capacitance: n.capacitance,
+            boundaryTemp: n.boundaryTemp,
+            materialId: n.materialId,
+            area: n.area,
+            mass: n.mass,
+            absorptivity: n.absorptivity,
+            emissivity: n.emissivity,
+          })),
+        );
+      }
 
-    // Insert nodes
-    if (mapped.nodes.length > 0) {
-      await db.insert(thermalNodes).values(
-        mapped.nodes.map((n) => ({
-          id: n.id,
-          modelId: n.modelId,
-          name: n.name,
-          nodeType: n.nodeType,
-          temperature: n.temperature,
-          capacitance: n.capacitance,
-          boundaryTemp: n.boundaryTemp,
-          materialId: n.materialId,
-          area: n.area,
-          mass: n.mass,
-          absorptivity: n.absorptivity,
-          emissivity: n.emissivity,
-        })),
-      );
-    }
-
-    // Insert conductors
-    if (mapped.conductors.length > 0) {
-      await db.insert(conductors).values(
-        mapped.conductors.map((c) => ({
-          id: c.id,
-          modelId: c.modelId,
-          name: c.name,
-          conductorType: c.conductorType,
-          nodeFromId: c.nodeFromId,
-          nodeToId: c.nodeToId,
-          conductance: c.conductance,
-          area: c.area,
-          viewFactor: c.viewFactor,
-          emissivity: c.emissivity,
-        })),
-      );
+      if (mapped.conductors.length > 0) {
+        await db.insert(conductors).values(
+          mapped.conductors.map((c) => ({
+            id: c.id,
+            modelId: c.modelId,
+            name: c.name,
+            conductorType: c.conductorType,
+            nodeFromId: c.nodeFromId,
+            nodeToId: c.nodeToId,
+            conductance: c.conductance,
+            area: c.area,
+            viewFactor: c.viewFactor,
+            emissivity: c.emissivity,
+          })),
+        );
+      }
     }
 
     return NextResponse.json({
